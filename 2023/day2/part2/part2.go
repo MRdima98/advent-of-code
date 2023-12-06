@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strconv"
 )
-const infinity = 99999
+const start = 1
 
 func splitGames (line string) (string, string) {
     re := regexp.MustCompile(`;`)
@@ -38,21 +38,12 @@ func minBalls (line string) (int, int, int) {
     re_red := regexp.MustCompile(`red`)
     re_blue := regexp.MustCompile(`blue`)
     re_green := regexp.MustCompile(`green`)
-    red := infinity
-    green := infinity
-    blue := infinity
+    red := start
+    green := start
+    blue := start
     var digit int
 
     if line == "" {
-        if red == infinity {
-            red = 1
-        }
-        if green == infinity {
-            green = 1
-        }
-        if blue == infinity {
-            blue = 1
-        }
         return red, green, blue
     }
 
@@ -63,11 +54,11 @@ func minBalls (line string) (int, int, int) {
             digit, _ = strconv.Atoi(re_balls.FindString(tmp))
             switch os := true
             os {
-            case re_red.MatchString(tmp):
+            case re_red.MatchString(tmp) && digit > red:
                 red = digit
-            case re_green.MatchString(tmp):
+            case re_green.MatchString(tmp) && digit > green:
                 green = digit
-            case re_blue.MatchString(tmp):
+            case re_blue.MatchString(tmp) && digit > blue:
                 blue = digit
             }
             line = line[index[0] + 1 :]
@@ -75,52 +66,47 @@ func minBalls (line string) (int, int, int) {
             digit, _ = strconv.Atoi(re_balls.FindString(line))
             switch os := true
             os {
-            case re_red.MatchString(line):
+            case re_red.MatchString(line) && digit > red:
                 red = digit
-            case re_green.MatchString(line):
+            case re_green.MatchString(line) && digit > green:
                 green = digit
-            case re_blue.MatchString(line):
+            case re_blue.MatchString(line) && digit > blue:
                 blue = digit
             }
             line = ""
         }
     }
-    if red == infinity {
-        red = 1
-    }
-    if green == infinity {
-        green = 1
-    }
-    if blue == infinity {
-        blue = 1
-    }
     return red, green, blue
 }
 
 func minPower (line string) int {
-    var red int
-    var green int
-    var blue int
+    red := start
+    green := start 
+    blue := start
     for true {
-        red = infinity
-        green = infinity 
-        blue = infinity
         var extraction_game string
         extraction_game, line = splitGames(line)
         if extraction_game == "" {
-            tmp_red, tmp_green, tmp_blue := minBalls(extraction_game)
-            if red > tmp_red && green > tmp_green && blue > tmp_blue {
+            tmp_red, tmp_green, tmp_blue := minBalls(line)
+            if (red < tmp_red) {
                 red = tmp_red
+            }
+            if (green < tmp_green) {
                 green = tmp_green
+            }
+            if (blue < tmp_blue) {
                 blue = tmp_blue
             }
             break
         }
         tmp_red, tmp_green, tmp_blue := minBalls(extraction_game)
-            fmt.Println(tmp_red, tmp_green, tmp_blue)
-        if red > tmp_red && green > tmp_green && blue > tmp_blue {
+        if (red < tmp_red) {
             red = tmp_red
+        }
+        if (green < tmp_green) {
             green = tmp_green
+        }
+        if (blue < tmp_blue) {
             blue = tmp_blue
         }
     }
@@ -130,7 +116,7 @@ func minPower (line string) int {
 
 func main() {
 
-    readFile, err := os.Open("control_input")
+    readFile, err := os.Open("input")
 
     if err != nil {
         fmt.Println("Error reading file")
@@ -147,6 +133,7 @@ func main() {
         line := fileScanner.Text()
         _, line = getGameId(line)
         game_power = minPower(line)
+        fmt.Println("Game power: ", game_power)
         total_power += game_power
     }
 
