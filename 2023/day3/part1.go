@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 )
+
 func checkUpDown(above_line string, line string, below_line string, i int) bool {
     if above_line == "" {
         if below_line[i] != '.' {
@@ -40,36 +41,30 @@ func validateNumber (above_line string, line string, below_line string, indexes 
             return valid 
         }
     }
-    if line[indexes[1]] != '.' {
-        fmt.Println(line)
-        fmt.Println(string(line[indexes[1]]))
-        return true
+    if len(line) != indexes[1] + 1 {
+        if line[indexes[1]] != '.' { 
+            return true
+        }
+        return checkUpDown(above_line, line, below_line, indexes[1] +1 )
     }
-    return checkUpDown(above_line, line, below_line, indexes[1])
+    return false
 }
 
 func getRowSum (above_line string, line string, below_line string) int {
     re_number := regexp.MustCompile(`\d+`)
     sum := 0
     for true {
-        fmt.Println(line)
         number := re_number.FindString(line)
         if number == "" {
             break
         }
         indexes := re_number.FindStringIndex(line)
         if indexes[1] == len(line) {
-            indexes[1] = indexes[1] - 1
-            // if validateNumber(above_line, line, below_line, indexes) {
-            //     num, _ := strconv.Atoi(number)
-            //     fmt.Println(num)
-            //     sum += num
-            // }
             break
         }
         if validateNumber(above_line, line, below_line, indexes) {
             num, _ := strconv.Atoi(number)
-            fmt.Println(num)
+            // fmt.Println(num)
             sum += num
         }
         line = line[indexes[1] :]
@@ -84,8 +79,8 @@ func getRowSum (above_line string, line string, below_line string) int {
 }
 
 func main() {
-
-    readFile, err := os.Open("input")
+    input_file := os.Args[1]
+    readFile, err := os.Open(input_file)
 
     if err != nil {
         fmt.Println("Error reading file")
@@ -117,4 +112,45 @@ func main() {
     fmt.Println(sum)
 
     readFile.Close()
+
+    const ROWS = 3
+    const COLUMNS = 10
+    var base [ROWS][COLUMNS] rune
+    for i := 0; i < ROWS; i++ {
+        for j := 0; j < COLUMNS; j++ {
+            base[i][j] = '.'
+        }
+    }
+    var cases [] [ROWS][COLUMNS] rune
+    stuff := []int{0, 4, 9}
+
+    for i := 0; i < ROWS; i++ {
+        tmp := base
+        for _, el := range stuff {
+            tmp := makeExample(tmp, cases, i, el)
+            cases = append(cases, tmp...)
+        }
+    }
+    // for _, el := range cases {
+    //     for _, el2 := range el {
+    //         fmt.Printf("%c\n", el2)
+    //     }
+    //     fmt.Println()
+    // }
+
+}
+
+func makeExample(base [3][10] rune, cases [][3][10] rune, index int, index2 int) ([] [3][10] rune) {
+    base[index][index2] = '1'
+    for i := index - 1; i <= index + 1; i++ {
+        tmp := base
+        for j := index2 - 1; j <= index2 + 1; j++ {
+            if i >= 0 && j >= 0 && i < 3 && j < 10 && i != j {
+                tmp[i][j] = '*'
+                cases = append(cases, tmp)
+                fmt.Println(len(cases))
+            }
+        }
+    }
+    return cases
 }
