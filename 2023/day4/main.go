@@ -21,15 +21,47 @@ func main() {
     fileScanner.Split(bufio.ScanLines)
 
     points := 0
+    var games[] int
+    
+    for fileScanner.Scan() {
+        games = append(games, 0)
+    }
 
     for fileScanner.Scan() {
         line := fileScanner.Text()
         points += singleGamePoints(line)
     }
 
-    fmt.Println(points)
+    index := 0
+    for fileScanner.Scan() {
+        line := fileScanner.Text()
+        games = singleCardWon(line, index, games)
+        index++
+    }
+
+    sum := 0
+    for _, el := range games {
+        sum += el
+    }
+
+
+    fmt.Println("Part 1: ", points)
+
+    fmt.Println("Part 2: ", sum)
 
     readFile.Close()
+}
+
+func singleCardWon(line string, curr_pos int, games[] int) []int {
+    choosen, winners := parseGames(line)
+    for _, el := range choosen {
+        for _, el2 := range winners {
+            if el == el2 {
+            }
+        }
+    }
+    parseGames(line)
+    return games
 }
 
 func singleGamePoints(line string) int {
@@ -56,7 +88,6 @@ func parseGames(line string) ([]int, []int) {
     colon_re := regexp.MustCompile(`:`)
     pipe_re := regexp.MustCompile(`\|`)
     index := colon_re.FindStringIndex(line)
-    fmt.Println(line)
     line = line[index[0] + 1:]
     index = pipe_re.FindStringIndex(line)
     rawChoosen := line[:index[0] - 1]
