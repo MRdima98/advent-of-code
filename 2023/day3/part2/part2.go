@@ -27,7 +27,6 @@ func calcGearVal(row int, col int, engine []string) (int, error) {
         }
         number = string(engine[row][tmp]) + number
     }
-    // fmt.Println(number)
     return strconv.Atoi(number)
 }
 
@@ -36,28 +35,22 @@ func isGearShift(engine [] string, y int, x int) (bool, int) {
     second_gear := false
     var first_gear_val int
     var second_gear_val int
-    fmt.Println()
     for i := x - 1; i <= x + 1; i++ {
         for j := y - 1; j <= y + 1; j++ {
             tmp, _ := calcGearVal(i, j, engine);
             if !first_gear  && tmp != 0{
                 first_gear = true
                 first_gear_val = tmp
-                fmt.Println("First val: ", first_gear_val)
             } 
             if first_gear {
                 tmp, _ := calcGearVal(i, j, engine);
-                fmt.Println("Second: ", second_gear_val)
                 if first_gear_val != tmp && tmp != 0{
-                    fmt.Println("good")
                     second_gear_val = tmp
                     second_gear = true
                 }
             }
         }
     }
-    fmt.Println("Result: ", first_gear_val, second_gear_val)
-    fmt.Println()
     return first_gear && second_gear, first_gear_val * second_gear_val
 }
 
