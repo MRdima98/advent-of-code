@@ -22,19 +22,19 @@ func main() {
 
     points := 0
     var games[] int
+    var lines [] string
     
     for fileScanner.Scan() {
-        games = append(games, 0)
+        games = append(games, 1)
+        lines = append(lines, fileScanner.Text())
     }
 
-    for fileScanner.Scan() {
-        line := fileScanner.Text()
+    for _, line := range lines {
         points += singleGamePoints(line)
     }
 
     index := 0
-    for fileScanner.Scan() {
-        line := fileScanner.Text()
+    for _, line := range lines {
         games = singleCardWon(line, index, games)
         index++
     }
@@ -48,15 +48,19 @@ func main() {
     fmt.Println("Part 1: ", points)
 
     fmt.Println("Part 2: ", sum)
+    fmt.Println("Bruh", games)
 
     readFile.Close()
 }
 
 func singleCardWon(line string, curr_pos int, games[] int) []int {
+    pointer := curr_pos + 1
     choosen, winners := parseGames(line)
     for _, el := range choosen {
         for _, el2 := range winners {
-            if el == el2 {
+            if el == el2 && pointer < len(games) {
+                games[pointer] += games[curr_pos]
+                pointer++
             }
         }
     }
