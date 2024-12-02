@@ -33,22 +33,10 @@ pub fn run() {
 
     let mut distances: Vec<i32> = Vec::new();
 
-    //for el in ordered_left {
-    //    print!("\n");
-    //    print!("Num {} ", el.num);
-    //    print!("Pos {} ", el.pos);
-    //}
-
     for (i, el) in ordered_left.iter().enumerate() {
-        //print!("{} ", el.num);
-        //print!("{}   ", ordered_right[i].num);
         distances.push((el.num as i32 - ordered_right[i].num as i32).abs());
     }
     print!("\n");
-
-    //for el in distances {
-    //    print!("{el} ");
-    //}
 
     let result: i32 = distances.iter().sum();
     println!("Result: {result}");
