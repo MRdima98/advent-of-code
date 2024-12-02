@@ -1,18 +1,13 @@
 enum Order {
-    asc,
-    desc,
-    unset,
-}
-
-enum Ordeal {
-    order(Order),
-    safe(bool),
+    Asc,
+    Desc,
+    Unset,
 }
 
 pub fn run() {
     let input = include_str!("../example_input.txt");
     let mut levels = vec![];
-    let mut level = vec![];
+    let mut level: Vec<i32>;
 
     for line in input.lines() {
         level = line_to_num(line);
@@ -21,39 +16,16 @@ pub fn run() {
 
     let mut safe_levels = 0;
     let mut safe: bool;
-    let mut one_boom = 0;
     for level in levels {
-        safe = true;
-        one_boom = 0;
-        println!("Level: {:?}", level);
-        let mut order = Order::unset;
-        for (i, el) in level.iter().enumerate() {
-            match level.get(i + 1) {
-                Some(tmp) => {
-                    let stuf = part1_works(*tmp, *el, &mut order);
-                    match stuf {
-                        Ordeal::safe(safe_one) => {
-                            if !safe_one && one_boom == 0 {
-                                println!("One boom: {one_boom}");
-                                one_boom += 1;
-                            } else {
-                                safe = false;
-                                break;
-                            }
-                            //if !safe_one {
-                            //    safe = false;
-                            //    break;
-                            //}
-                        }
-                        Ordeal::order(order_one) => {
-                            order = order_one;
-                        }
-                    }
-                }
-                None => {}
+        safe = false;
+        for (i, _) in level.iter().enumerate() {
+            let mut copy = level.clone();
+            copy.remove(i);
+            if remove_boom(copy) {
+                safe = true;
+                break;
             }
         }
-
         println!("Safe: {safe}\n");
         if safe {
             safe_levels += 1;
@@ -72,34 +44,47 @@ fn line_to_num(line: &str) -> Vec<i32> {
     vec
 }
 
-fn part1_works(tmp: i32, el: i32, order: &mut Order) -> Ordeal {
-    match order {
-        Order::unset => {
-            if el > tmp {
-                return Ordeal::order(Order::asc);
-            }
+fn remove_boom(level: Vec<i32>) -> bool {
+    let mut safe = true;
 
-            if el < tmp {
-                return Ordeal::order(Order::desc);
+    let mut order = Order::Unset;
+    for (i, el) in level.iter().enumerate() {
+        match level.get(i + 1) {
+            Some(tmp) => {
+                let tmp2 = (el - tmp).abs();
+
+                match order {
+                    Order::Unset => {
+                        if el < tmp {
+                            order = Order::Asc;
+                        }
+
+                        if el > tmp {
+                            order = Order::Desc;
+                        }
+                    }
+                    Order::Asc => {
+                        if el > tmp {
+                            safe = false;
+                            break;
+                        }
+                    }
+                    Order::Desc => {
+                        if el < tmp {
+                            safe = false;
+                            break;
+                        }
+                    }
+                }
+
+                if !(tmp2 <= 3 && tmp2 >= 1) {
+                    safe = false;
+                    break;
+                }
             }
-        }
-        Order::asc => {
-            if el < tmp {
-                return Ordeal::safe(false);
-            }
-        }
-        Order::desc => {
-            if el > tmp {
-                return Ordeal::safe(false);
-            }
+            None => {}
         }
     }
 
-    let tmp2 = (el - tmp).abs();
-
-    if !(tmp2 <= 3 && tmp2 >= 1) {
-        return Ordeal::safe(false);
-    }
-
-    Ordeal::safe(true)
+    safe
 }
