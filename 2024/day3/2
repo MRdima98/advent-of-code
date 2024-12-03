@@ -1,0 +1,26 @@
+use regex::Regex;
+
+pub fn run() {
+    let input = include_str!("../input.txt");
+
+    let mul_re = Regex::new(r"mul(\d,\d)").expect("This is a balls regex");
+    let num_re = Regex::new(r"\d").expect("This is a balls regex");
+
+    //let mut res_mul = vec![];
+    //let mul_cap = mul_re.captures_iter(input);
+    let Some(cap) = mul_re.captures(input) else {
+        print!("Nothing got caught!");
+        return;
+    };
+
+    for mul in cap.iter() {
+        match mul {
+            Some(tmp) => {
+                print!("{}", tmp.as_str());
+            }
+            None => {}
+        }
+    }
+
+    print!("Hello from part1\n");
+}
