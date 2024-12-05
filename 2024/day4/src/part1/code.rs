@@ -1,10 +1,5 @@
 use std::{usize, vec};
 
-struct Position {
-    x: i32,
-    y: i32,
-}
-
 pub fn run() {
     let input = include_str!("../input.txt");
     let mut xmas = vec![];
