@@ -1,5 +1,5 @@
 use core::{panic, time};
-use std::{collections::HashMap, fmt::Display, thread, time::SystemTime, usize};
+use std::{collections::HashMap, fmt::Display, thread, time::SystemTime, usize, vec};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct Position {
@@ -90,49 +90,57 @@ pub fn run() {
     for (i, g) in distinct_pos.iter_mut().enumerate() {
         let mut fake_map = map.clone();
         guard_coord = g.pos.clone();
+        //fake_map[guard_coord.x][guard_coord.y] = '^';
         block = move_guard(&mut g.pos, &g.dir.clone(), &map);
-        //println!("Guards start: {}", guard_coord);
-        //println!("Block: {}", g.pos);
-        //println!("dir: {}", g.dir);
-        fake_map[g.pos.x][g.pos.y] = '#';
-        //pretty_print(&fake_map);
+        match block {
+            Block::Obstacle => {
+                let tmp = check_direction(g.dir);
+                move_guard(&mut g.pos, &tmp, &map);
+            }
+            _ => {}
+        }
+        fake_map[g.pos.x][g.pos.y] = 'O';
 
-        let mut loop_detector = HashMap::new();
-        //block = Block::Valid;
+        let mut loop_detector: Vec<Going> = vec![];
         direction = check_direction(g.dir);
-        //println!("Guard: {}, {}, {direction} ", g.pos.x, g.pos.y);
+        //pretty_print(&fake_map);
 
         loop {
             match block {
                 Block::Exit => {
-                    //println!("Last pos: {guard_coord}");
-                    //println!("Found exit");
+                    //println!("Found exit\n\n");
                     break;
                 }
                 Block::Obstacle => {
                     direction = check_direction(direction);
                     move_guard(&mut guard_coord, &direction, &fake_map);
+                    fake_map[guard_coord.x][guard_coord.y] = '+';
                 }
                 _ => {}
             }
 
-            loop_detector
-                .entry(guard_coord)
-                .and_modify(|counter| *counter += 1)
-                .or_insert(1);
+            let curr = Going {
+                pos: guard_coord,
+                dir: direction,
+            };
 
-            let vals: Vec<usize> = loop_detector.values().cloned().collect();
-            if vals.contains(&30) {
+            if !loop_detector.contains(&curr) {
+                loop_detector.push(curr);
+            } else {
                 count += 1;
+                println!("Found loop\n\n");
                 break;
             }
 
             block = move_guard(&mut guard_coord, &direction, &fake_map);
+            fake_map[guard_coord.x][guard_coord.y] = 'P';
             //println!("Move: {},{},{}", guard_coord.x, guard_coord.y, direction);
-            //thread::sleep(time::Duration::from_millis(200));
+            pretty_print(&fake_map);
+            thread::sleep(time::Duration::from_millis(100));
         }
         //panic!();
-        println!("Iter: {i}");
+        //thread::sleep(time::Duration::from_millis(300));
+        //println!("Iter: {i}");
     }
 
     print!("\nNum of steps: {}\n\n", count);
@@ -224,6 +232,10 @@ fn check_block(pos: Position, map: &Vec<Vec<char>>, xmove: i32, ymove: i32) -> B
     }
 
     if map[next_x][next_y] == '#' {
+        return Block::Obstacle;
+    }
+
+    if map[next_x][next_y] == 'O' {
         return Block::Obstacle;
     }
 
