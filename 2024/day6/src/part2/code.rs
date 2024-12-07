@@ -1,5 +1,5 @@
-use core::{panic, time};
-use std::{collections::HashMap, fmt::Display, thread, time::SystemTime, usize, vec};
+use core::time;
+use std::{fmt::Display, thread, time::SystemTime, usize, vec};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct Position {
@@ -38,12 +38,6 @@ impl Display for Direction {
     }
 }
 
-enum Block {
-    Valid,
-    Obstacle,
-    Exit,
-}
-
 pub fn run() {
     let input = include_str!("../input");
     let mut map = vec![];
@@ -58,67 +52,36 @@ pub fn run() {
         map.push(row);
     }
 
+    let backup = guard_coord.clone();
+
     let mut direction = Direction::Up;
-    let mut block = Block::Valid;
     let mut count = 0;
-    let mut distinct_pos: Vec<Going> = vec![];
+    let mut distinct_pos: Vec<Position> = vec![];
 
     loop {
-        match block {
-            Block::Exit => {
-                break;
-            }
-            Block::Obstacle => {
-                direction = check_direction(direction);
-                move_guard(&mut guard_coord, &direction, &map);
-            }
-            _ => {}
+        if !distinct_pos.contains(&guard_coord) {
+            distinct_pos.push(guard_coord.clone());
         }
 
-        distinct_pos.push(Going {
-            pos: guard_coord,
-            dir: direction,
-        });
-
-        block = move_guard(&mut guard_coord, &direction, &map);
+        if !valid_block(&mut guard_coord, &map, &mut direction) {
+            break;
+        }
     }
 
-    println!("{:?}", distinct_pos.iter().count());
+    println!("Distinct pos: {:?}", distinct_pos.iter().count());
 
-    count = 0;
-
-    for (i, g) in distinct_pos.iter_mut().enumerate() {
-        let mut fake_map = map.clone();
-        guard_coord = g.pos.clone();
-        //fake_map[guard_coord.x][guard_coord.y] = '^';
-        block = move_guard(&mut g.pos, &g.dir.clone(), &map);
-        match block {
-            Block::Obstacle => {
-                let tmp = check_direction(g.dir);
-                move_guard(&mut g.pos, &tmp, &map);
-            }
-            _ => {}
-        }
-        fake_map[g.pos.x][g.pos.y] = 'O';
+    for (i, g) in distinct_pos.iter().enumerate() {
+        println!("Iter {i}");
+        guard_coord = backup.clone();
 
         let mut loop_detector: Vec<Going> = vec![];
-        direction = check_direction(g.dir);
-        //pretty_print(&fake_map);
+        direction = Direction::Up;
+
+        if let Some(pos) = distinct_pos.get(i + 1) {
+            map[pos.x][pos.y] = '#';
+        };
 
         loop {
-            match block {
-                Block::Exit => {
-                    //println!("Found exit\n\n");
-                    break;
-                }
-                Block::Obstacle => {
-                    direction = check_direction(direction);
-                    move_guard(&mut guard_coord, &direction, &fake_map);
-                    fake_map[guard_coord.x][guard_coord.y] = '+';
-                }
-                _ => {}
-            }
-
             let curr = Going {
                 pos: guard_coord,
                 dir: direction,
@@ -128,19 +91,14 @@ pub fn run() {
                 loop_detector.push(curr);
             } else {
                 count += 1;
-                println!("Found loop\n\n");
                 break;
             }
 
-            block = move_guard(&mut guard_coord, &direction, &fake_map);
-            fake_map[guard_coord.x][guard_coord.y] = 'P';
-            //println!("Move: {},{},{}", guard_coord.x, guard_coord.y, direction);
-            pretty_print(&fake_map);
-            thread::sleep(time::Duration::from_millis(100));
+            if !valid_block(&mut guard_coord, &map, &mut direction) {
+                break;
+            }
         }
-        //panic!();
-        //thread::sleep(time::Duration::from_millis(300));
-        //println!("Iter: {i}");
+        map[g.x][g.y] = '.';
     }
 
     print!("\nNum of steps: {}\n\n", count);
@@ -154,56 +112,7 @@ fn pretty_print(fake_map: &Vec<Vec<char>>) {
     println!();
 }
 
-fn move_guard(position: &mut Position, direction: &Direction, map: &Vec<Vec<char>>) -> Block {
-    match direction {
-        Direction::Up => {
-            let block = check_block(*position, map, -1, 0);
-            match block {
-                Block::Valid => {
-                    position.x -= 1;
-                    Block::Valid
-                }
-                Block::Obstacle => Block::Obstacle,
-                _ => Block::Exit,
-            }
-        }
-        Direction::Down => {
-            let block = check_block(*position, map, 1, 0);
-            match block {
-                Block::Valid => {
-                    position.x += 1;
-                    Block::Valid
-                }
-                Block::Obstacle => Block::Obstacle,
-                _ => Block::Exit,
-            }
-        }
-        Direction::Right => {
-            let block = check_block(*position, map, 0, 1);
-            match block {
-                Block::Valid => {
-                    position.y += 1;
-                    Block::Valid
-                }
-                Block::Obstacle => Block::Obstacle,
-                _ => Block::Exit,
-            }
-        }
-        Direction::Left => {
-            let block = check_block(*position, map, 0, -1);
-            match block {
-                Block::Valid => {
-                    position.y -= 1;
-                    Block::Valid
-                }
-                Block::Obstacle => Block::Obstacle,
-                _ => Block::Exit,
-            }
-        }
-    }
-}
-
-fn check_direction(direction: Direction) -> Direction {
+fn change_direction(direction: Direction) -> Direction {
     match direction {
         Direction::Up => Direction::Right,
         Direction::Down => Direction::Left,
@@ -212,32 +121,88 @@ fn check_direction(direction: Direction) -> Direction {
     }
 }
 
-fn check_block(pos: Position, map: &Vec<Vec<char>>, xmove: i32, ymove: i32) -> Block {
-    if xmove < 0 && pos.x == 0 {
-        return Block::Exit;
-    }
+fn valid_block(pos: &mut Position, map: &Vec<Vec<char>>, dir: &mut Direction) -> bool {
+    let mut next_y = pos.y;
+    let mut next_x = pos.x;
 
-    if ymove < 0 && pos.y == 0 {
-        return Block::Exit;
-    }
-
-    let next_x = (pos.x as i32 + xmove) as usize;
-    if (pos.x as i32 + xmove) as usize == map.len() {
-        return Block::Exit;
-    }
-
-    let next_y = (pos.y as i32 + ymove) as usize;
-    if (pos.y as i32 + ymove) as usize == map[0].len() {
-        return Block::Exit;
+    match dir {
+        Direction::Up => {
+            if next_x == 0 {
+                return false;
+            }
+            next_x -= 1;
+        }
+        Direction::Down => {
+            next_x += 1;
+            if next_x == map.len() {
+                return false;
+            }
+        }
+        Direction::Right => {
+            next_y += 1;
+            if next_y == map[0].len() {
+                return false;
+            }
+        }
+        Direction::Left => {
+            if next_y == 0 {
+                return false;
+            }
+            next_y -= 1;
+        }
     }
 
     if map[next_x][next_y] == '#' {
-        return Block::Obstacle;
+        *dir = change_direction(*dir);
+        return true;
     }
 
-    if map[next_x][next_y] == 'O' {
-        return Block::Obstacle;
+    pos.x = next_x;
+    pos.y = next_y;
+
+    return true;
+}
+
+fn valid_bar(pos: &mut Position, map: &Vec<Vec<char>>, dir: &mut Direction) -> bool {
+    let mut next_y = pos.y;
+    let mut next_x = pos.x;
+
+    match dir {
+        Direction::Up => {
+            if next_x == 0 {
+                return false;
+            }
+            next_x -= 1;
+        }
+        Direction::Down => {
+            next_x += 1;
+            if next_x == map.len() {
+                return false;
+            }
+        }
+        Direction::Right => {
+            next_y += 1;
+            if next_y == map[0].len() {
+                return false;
+            }
+        }
+        Direction::Left => {
+            if next_y == 0 {
+                return false;
+            }
+            next_y -= 1;
+        }
     }
 
-    return Block::Valid;
+    if map[next_x][next_y] == '#' {
+        *dir = change_direction(*dir);
+        pos.x = next_x;
+        pos.y = next_y;
+        return true;
+    }
+
+    pos.x = next_x;
+    pos.y = next_y;
+
+    return true;
 }
