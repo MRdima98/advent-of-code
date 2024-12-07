@@ -68,10 +68,9 @@ pub fn run() {
         }
     }
 
-    println!("Distinct pos: {:?}", distinct_pos.iter().count());
+    let start = std::time::Instant::now();
 
     for (i, g) in distinct_pos.iter().enumerate() {
-        println!("Iter {i}");
         guard_coord = backup.clone();
 
         let mut loop_detector: Vec<Going> = vec![];
@@ -102,6 +101,7 @@ pub fn run() {
     }
 
     print!("\nNum of steps: {}\n\n", count);
+    print!("Num of steps: {:?}", start.elapsed());
 }
 
 fn pretty_print(fake_map: &Vec<Vec<char>>) {
