@@ -1,4 +1,5 @@
-use std::{fmt::Display, ops, usize};
+use core::time;
+use std::{fmt::Display, ops, thread, usize};
 
 #[derive(Debug)]
 struct Data {
@@ -7,15 +8,31 @@ struct Data {
 }
 
 #[derive(Clone, Copy)]
-enum Op {
+enum Operation {
+    Root,
     Sum,
     Molt,
+}
+impl Display for Operation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Operation::Sum => write!(f, "+"),
+            Operation::Molt => write!(f, "*"),
+            Operation::Root => write!(f, "R"),
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
 struct OpsList {
     nums: (usize, usize),
-    op: Op,
+    op: Operation,
+}
+
+struct Tree {
+    val: Operation,
+    left: Option<Box<Tree>>,
+    right: Option<Box<Tree>>,
 }
 
 impl Display for Data {
@@ -43,8 +60,15 @@ pub fn run() {
     }
 
     let mut sum = 0;
-    for d in data {
-        sum += valid_code(&mut get_possible_op(&d.ops), d.tot);
+    //for d in data {
+    //    //sum += valid_code(&mut get_possible_op(&d.ops), d.tot);
+    //}
+    let root = gen_tee(3);
+    //print_tree(&Some(Box::new(root)));
+    let mut arr: Vec<Operation> = vec![];
+    let arr = get_random(&Some(Box::new(root)), &mut arr);
+    for el in arr {
+        print!("{}", el);
     }
 
     print!("\n\nThe sum of part 1 is: {sum}\n\n");
@@ -57,20 +81,21 @@ fn valid_code(lists: &mut [Vec<OpsList>], res: usize) -> usize {
         let mut acc: usize = 0;
         for el in row.iter_mut() {
             match el.op {
-                Op::Sum => {
+                Operation::Sum => {
                     if acc == 0 {
                         acc = el.nums.1 + el.nums.0;
                     } else {
                         acc = acc + el.nums.1
                     }
                 }
-                Op::Molt => {
+                Operation::Molt => {
                     if acc == 0 {
                         acc = el.nums.1 * el.nums.0;
                     } else {
                         acc = acc * el.nums.1
                     }
                 }
+                Operation::Root => {}
             }
             //println!("Sum: {}", acc);
         }
@@ -96,67 +121,72 @@ fn vec_to_usize(num: &[&str]) -> Vec<usize> {
     tmp
 }
 
-fn get_possible_op(nums: &[usize]) -> Vec<Vec<OpsList>> {
-    let mut lists: Vec<Vec<OpsList>> = vec![];
-    let mut all_plus: Vec<OpsList> = vec![];
-    let mut all_molt: Vec<OpsList> = vec![];
-    for (i, left) in nums.iter().enumerate() {
-        let Some(right) = nums.get(i + 1) else {
-            break;
-        };
+fn gen_tee(depth: usize) -> Tree {
+    let mut root = Tree {
+        val: Operation::Root,
+        left: None,
+        right: None,
+    };
 
-        if left == right {
-            break;
-        };
-
-        all_molt.push(OpsList {
-            nums: (*left, *right),
-            op: Op::Molt,
-        });
-
-        all_plus.push(OpsList {
-            nums: (*left, *right),
-            op: Op::Sum,
-        });
+    for _ in 0..depth {
+        add_leaf(&mut root);
     }
 
-    //println!("List: ");
-    //for i in list.iter() {
-    //    match i.op {
-    //        Op::Sum => {
-    //            print!("{}, {}", i.nums.0, i.nums.1);
-    //        }
-    //        Op::Molt => (),
-    //    }
-    //}
-    //println!();
-
-    for (i, _) in all_plus.iter().enumerate() {
-        let mut tmp = all_plus.clone();
-        let mut tmp2 = all_molt.clone();
-        tmp[i].op = Op::Molt;
-        tmp2[i].op = Op::Sum;
-
-        lists.push(tmp);
-        lists.push(tmp2);
-    }
-
-    lists.push(all_plus);
-    lists.push(all_molt);
-
-    //for l in lists.iter() {
-    //    pretty_print(&l);
-    //    println!();
-    //}
-
-    lists
+    root
 }
 
-fn pretty_print(fake_map: &Vec<OpsList>) {
-    for row in fake_map {
-        match row.op {
-            Op::Sum => print!("{},{} +; ", row.nums.0, row.nums.1),
-            Op::Molt => print!("{},{} *; ", row.nums.0, row.nums.1),
-        }
+fn add_leaf(root: &mut Tree) {
+    if let Some(leaf) = &mut root.left {
+        add_leaf(leaf);
+    } else {
+        root.left = Some(Box::new(Tree {
+            val: Operation::Sum,
+            left: None,
+            right: None,
+        }));
     }
+
+    if let Some(leaf) = &mut root.right {
+        add_leaf(leaf);
+    } else {
+        root.right = Some(Box::new(Tree {
+            val: Operation::Molt,
+            left: None,
+            right: None,
+        }));
+    }
+    return;
+}
+
+fn print_tree(root: &Option<Box<Tree>>) {
+    let Some(root) = root else {
+        print!(" ");
+        return;
+    };
+
+    //print!("{}", root.val);
+    print_tree(&root.left);
+    print_tree(&root.right);
+}
+
+fn get_random(root: &Option<Box<Tree>>, arr: &mut Vec<Operation>) -> Vec<Operation> {
+    let Some(root) = root else {
+        return arr.to_vec();
+    };
+
+    let Some(left) = &root.left else {
+        println!("push +");
+        arr.push(Operation::Sum);
+        return arr.to_vec();
+    };
+
+    let Some(right) = &root.right else {
+        arr.push(Operation::Molt);
+        return arr.to_vec();
+    };
+
+    get_random(&root.left, arr);
+    get_random(&root.right, arr);
+
+    return arr.to_vec();
 }
