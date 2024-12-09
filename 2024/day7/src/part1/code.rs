@@ -1,4 +1,5 @@
 use core::time;
+use std::collections::HashMap;
 use std::{fmt::Display, ops, thread, usize};
 
 #[derive(Debug)]
@@ -9,7 +10,6 @@ struct Data {
 
 #[derive(Clone, Copy)]
 enum Operation {
-    Root,
     Sum,
     Molt,
 }
@@ -18,7 +18,6 @@ impl Display for Operation {
         match self {
             Operation::Sum => write!(f, "+"),
             Operation::Molt => write!(f, "*"),
-            Operation::Root => write!(f, "R"),
         }
     }
 }
@@ -26,11 +25,15 @@ impl Display for Operation {
 pub fn run() {
     let input = include_str!("../input");
     let mut data: Vec<Data> = vec![];
+    let mut longest_arr: usize = 0;
 
     for line in input.lines() {
         let mut tmp: Vec<&str> = line.split_whitespace().collect();
         let tmp_str = tmp.remove(0);
         let tmp_str = &tmp_str[0..tmp_str.len() - 1];
+        if tmp.len() > longest_arr {
+            longest_arr = tmp_str.len();
+        }
 
         data.push(Data {
             tot: num_to_int(tmp_str),
@@ -38,39 +41,59 @@ pub fn run() {
         });
     }
 
-    let mut sum = 0;
-    let mut acc = 0;
+    println!("long! {longest_arr}");
+    let mut possible_op: Vec<Vec<Operation>> = vec![];
+    let mut longest_arr = longest_arr as u32;
+    longest_arr = (2 as u32).pow(longest_arr) - 1;
+    println!("{longest_arr}");
+    for i in 0..=longest_arr {
+        let tmp = random_binary(i as usize);
+        possible_op.push(tmp);
+    }
+    println!("{}", possible_op.len());
 
-    for el in data.iter_mut() {
-        sum += is_valid(el.tot, &mut el.sequence, &mut acc);
+    let mut sum = 0;
+    for d in data {
+        //println!("Sec {}", d.tot);
+        let t = d.sequence.len();
+        //let possibilities = t * (t + 1);
+        for i in 0..=possible_op.len() {
+            let mut acc = 0;
+            let Some(ops) = possible_op.get(i) else {
+                continue;
+            };
+
+            //for o in ops {
+            //    print!("{o}");
+            //}
+            //println!();
+
+            for (i, el) in d.sequence.iter().enumerate() {
+                if i == 0 {
+                    acc = *el;
+                    continue;
+                }
+
+                let Some(op) = ops.get(i - 1) else {
+                    break;
+                };
+
+                match op {
+                    Operation::Sum => acc += *el,
+                    Operation::Molt => acc *= *el,
+                }
+            }
+            //println!();
+            if d.tot == acc {
+                println!("Hit: {acc}");
+                sum += acc;
+                break;
+            }
+        }
+        println!();
     }
 
     print!("\n\nThe sum of part 1 is: {sum}\n\n");
-}
-
-fn is_valid(tot: usize, sequence: &mut Vec<usize>, acc: &mut usize) -> usize {
-    //print!("My accumulator: {:?}", acc);
-    //thread::sleep(time::Duration::from_millis(200));
-    let Some(num) = sequence.pop() else {
-        if tot == *acc {
-            println!("found match: ");
-            return tot;
-        } else {
-            return 0;
-        }
-    };
-
-    if *acc == 0 {
-        return is_valid(tot, sequence, &mut (*acc + num));
-    } else {
-        return is_valid(tot, sequence, &mut (*acc * num));
-    }
-
-    //if *acc == 0 {
-    //    *acc = 1;
-    //}
-    //
-    //return is_valid(tot, sequence, &mut (*acc * num));
 }
 
 fn num_to_int(num: &str) -> usize {
@@ -83,4 +106,32 @@ fn vec_to_usize(num: &[&str]) -> Vec<usize> {
         tmp.push(num_to_int(n));
     }
     tmp
+}
+
+fn random_binary(num: usize) -> Vec<Operation> {
+    let mut op: Vec<Operation> = vec![];
+    let tmp = format!("{num:13b}");
+
+    for el in tmp.chars() {
+        match el {
+            '1' => op.push(Operation::Molt),
+            _ => op.push(Operation::Sum),
+        }
+    }
+
+    op.reverse();
+
+    //print!("{tmp}: ");
+    //for o in op.iter() {
+    //    print!("{o}");
+    //}
+    //println!();
+
+    op
+}
+
+fn pretty_print(data: &[Operation]) {
+    for el in data.iter() {
+        print!("{el }");
+    }
 }
