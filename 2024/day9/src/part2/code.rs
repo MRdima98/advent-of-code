@@ -43,11 +43,18 @@ pub fn run() {
         }
     }
 
-    //pretty_print(&unpacked_disk);
+    let mut string_disk = "".to_string();
+    for el in unpacked_disk.iter() {
+        string_disk += el.to_string().as_str();
+    }
+
+    println!("String ver: {string_disk}");
+    pretty_print(&unpacked_disk);
 
     for el in checked_id.iter_mut().rev() {
-        println!("El: {}", el.0);
-        let id_coord = get_id_coord(&unpacked_disk, el.0);
+        //println!("El: {}", el.0);
+        //let id_coord = get_id_coord(&unpacked_disk, el.0);
+        let id_coord = get_id_coord(&string_disk, el.0);
         el.1 = true;
 
         let Some(space_coord) =
@@ -56,21 +63,22 @@ pub fn run() {
             continue;
         };
 
-        //print!("Num : ");
-        //for i in id_coord.0..=id_coord.1 {
-        //    print!("{}", unpacked_disk[i]);
-        //}
-        //println!();
+        print!("Num : ");
+        for i in id_coord.0..=id_coord.1 {
+            print!("{}", unpacked_disk[i]);
+        }
+        println!();
 
-        //print!("Space: ");
-        //for i in space_coord.0..=space_coord.1 {
-        //    print!("{}", unpacked_disk[i]);
-        //}
-        //println!();
+        print!("Space: ");
+        for i in space_coord.0..=space_coord.1 {
+            print!("{}", unpacked_disk[i]);
+        }
+        println!();
+        println!();
 
         //pretty_print(&unpacked_disk);
         //println!();
-        //thread::sleep(time::Duration::from_millis(200));
+        thread::sleep(time::Duration::from_millis(200));
 
         let mut j = space_coord.0;
         for i in id_coord.0..=id_coord.1 {
@@ -81,11 +89,11 @@ pub fn run() {
         }
     }
 
-    pretty_print(&unpacked_disk);
+    //pretty_print(&unpacked_disk);
 
     let mut sum = 0;
     for (i, el) in unpacked_disk.iter().enumerate() {
-        println!("Iter: {i}");
+        //println!("Iter: {i}");
         match el {
             Disk::Val(el) => {
                 sum += i * el;
@@ -97,6 +105,14 @@ pub fn run() {
     }
 
     println!("The res is: {sum}");
+}
+
+fn get_id_coord(string_disk: &String, id: usize) -> (usize, usize) {
+    let string_id = id.to_string();
+    let start = string_disk.find(&string_id).unwrap();
+    let end = start + string_id.len() - 1;
+
+    (start, end)
 }
 
 fn get_space_coord(unpacked_disk: &[Disk], size: usize, limit: usize) -> Option<(usize, usize)> {
@@ -112,6 +128,7 @@ fn get_space_coord(unpacked_disk: &[Disk], size: usize, limit: usize) -> Option<
             }
             _ => {
                 if space.len() >= size {
+                    println!("Space size: {}. Num size: {}", space.len(), size);
                     return Some((space[0], space[space.len() - 1]));
                 }
 
@@ -122,34 +139,40 @@ fn get_space_coord(unpacked_disk: &[Disk], size: usize, limit: usize) -> Option<
     None
 }
 
-fn get_id_coord(unpacked_disk: &[Disk], id: usize) -> (usize, usize) {
-    let mut coord = (0, unpacked_disk.len() - 1);
-    let mut hit = false;
-    for (i, el) in unpacked_disk.iter().enumerate() {
-        let tmp;
-        match el {
-            Disk::Val(tmp2) => tmp = tmp2,
-            Disk::Dot => {
-                if hit {
-                    hit = false;
-                    coord.1 = i - 1;
-                }
-                continue;
-            }
-        }
-
-        if *tmp == id && !hit {
-            coord.0 = i;
-            hit = true;
-        }
-
-        if *tmp != id && hit {
-            hit = false;
-            coord.1 = i - 1;
-        }
-    }
-    coord
-}
+//fn get_id_coord(unpacked_disk: &[Disk], id: usize) -> (usize, usize) {
+//    let mut coord = (0, unpacked_disk.len() - 1);
+//    let mut hit = false;
+//    for (i, el) in unpacked_disk.iter().enumerate() {
+//        let tmp;
+//        match el {
+//            Disk::Val(tmp2) => {
+//                tmp = tmp2;
+//            }
+//            Disk::Dot => {
+//                if hit {
+//                    println!("Second hit: {i}");
+//                    hit = false;
+//                    coord.1 = i - 1;
+//                }
+//                continue;
+//            }
+//        }
+//
+//        if *tmp == id && !hit {
+//            thread::sleep(time::Duration::from_millis(200));
+//            println!("First hit: {i}");
+//            coord.0 = i;
+//            hit = true;
+//        }
+//
+//        if *tmp != id && hit {
+//            println!("Second hit: {i}");
+//            hit = false;
+//            coord.1 = i - 1;
+//        }
+//    }
+//    coord
+//}
 
 fn pretty_print(arr: &[Disk]) {
     for el in arr {
