@@ -20,27 +20,36 @@ pub fn run() {
 
     let mut sum = 0;
     for start in starting_pos {
-        bfs(&mut map, start);
+        sum += bfs(&mut map.clone(), start);
     }
 
     print!("The res is: {sum}\n\n");
 }
 
-fn bfs(graph: &mut [Vec<(usize, bool)>], coord: (usize, usize)) {
+fn bfs(graph: &mut [Vec<(usize, bool)>], coord: (usize, usize)) -> usize {
+    let mut directed_edges = vec![];
+    directed_edges.push((coord.0, coord.1));
     graph[coord.0][coord.1].1 = true;
-    let directed_edges = get_directed_edges(graph, coord);
-    for edge in directed_edges {
-        let node = graph[edge.0][edge.1];
+    let mut count = 0;
+    while !directed_edges.is_empty() {
+        let node = directed_edges.pop().unwrap();
+        println!("{},{} ", node.0 + 1, node.1 + 1);
 
-        if node.0 == 9 {
-            println!("{}", node.0);
+        if graph[node.0][node.1].0 == 9 {
+            println!("Hit");
+            count += 1;
         }
 
-        if !node.1 {
-            graph[edge.0][edge.1].1 = true;
-            bfs(graph, edge);
+        let neighbour = get_directed_edges(graph, node);
+        for ghebur in neighbour {
+            if !graph[ghebur.0][ghebur.1].1 {
+                graph[ghebur.0][ghebur.1].1 = true;
+                directed_edges.push(ghebur);
+            }
         }
     }
+    //println!("\nCount: {count}");
+    count
 }
 
 fn get_directed_edges(
@@ -48,7 +57,6 @@ fn get_directed_edges(
     coord: (usize, usize),
 ) -> Vec<(usize, usize)> {
     let mut adj = vec![];
-    println!("{},{} ", coord.0 + 1, coord.1 + 1);
 
     if coord.0 > 0 {
         if graph[coord.0][coord.1].0 + 1 == graph[coord.0 - 1][coord.1].0 {
