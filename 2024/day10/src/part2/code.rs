@@ -20,11 +20,10 @@ pub fn run() {
 
     let mut sum = 0;
     for start in starting_pos {
-        println!("{},{}", start.0, start.1);
         sum += get_path_grade(&map, start, start);
     }
 
-    print!("The res is: {sum}\n\n");
+    //print!("The res is: {sum}\n\n");
 }
 
 fn get_path_grade(map: &[Vec<usize>], curr_coord: (usize, usize), prev: (usize, usize)) -> usize {
@@ -67,7 +66,6 @@ fn get_path_grade(map: &[Vec<usize>], curr_coord: (usize, usize), prev: (usize, 
     }
 
     if *curr == 9 {
-        println!("hit");
         return 1;
     }
 

@@ -10,7 +10,7 @@ pub fn run() {
         let mut row = vec![];
         for (j, c) in line.chars().enumerate() {
             let num = c.to_digit(10).unwrap() as usize;
-            row.push(num);
+            row.push((num, false));
             if num == 0 {
                 starting_pos.push((i, j));
             }
@@ -20,67 +20,59 @@ pub fn run() {
 
     let mut sum = 0;
     for start in starting_pos {
-        println!("{},{}", start.0, start.1);
-        sum += get_path_grade(&map, start, start);
+        bfs(&mut map, start);
     }
 
     print!("The res is: {sum}\n\n");
 }
 
-fn get_path_grade(map: &[Vec<usize>], curr_coord: (usize, usize), prev: (usize, usize)) -> usize {
-    let Some(row) = map.get(curr_coord.0) else {
-        return 0;
-    };
+fn bfs(graph: &mut [Vec<(usize, bool)>], coord: (usize, usize)) {
+    graph[coord.0][coord.1].1 = true;
+    let directed_edges = get_directed_edges(graph, coord);
+    for edge in directed_edges {
+        let node = graph[edge.0][edge.1];
 
-    let Some(curr) = row.get(curr_coord.1) else {
-        return 0;
-    };
+        if node.0 == 9 {
+            println!("{}", node.0);
+        }
 
-    println!("{curr}");
-    //thread::sleep(time::Duration::from_millis(200));
+        if !node.1 {
+            graph[edge.0][edge.1].1 = true;
+            bfs(graph, edge);
+        }
+    }
+}
 
-    let up = (curr_coord.0 - 1, curr_coord.1);
-    let down = (curr_coord.0 + 1, curr_coord.1);
-    let left = (curr_coord.0, curr_coord.1 - 1);
-    let right = (curr_coord.0, curr_coord.1 + 1);
+fn get_directed_edges(
+    graph: &mut [Vec<(usize, bool)>],
+    coord: (usize, usize),
+) -> Vec<(usize, usize)> {
+    let mut adj = vec![];
+    println!("{},{} ", coord.0 + 1, coord.1 + 1);
 
-    if curr_coord == prev {
-        println!("Start");
-        return get_path_grade(map, up, curr_coord)
-            + get_path_grade(map, down, curr_coord)
-            + get_path_grade(map, left, curr_coord)
-            + get_path_grade(map, right, curr_coord);
+    if coord.0 > 0 {
+        if graph[coord.0][coord.1].0 + 1 == graph[coord.0 - 1][coord.1].0 {
+            adj.push((coord.0 - 1, coord.1));
+        }
     }
 
-    if map[prev.0][prev.1] != *curr - 1 {
-        return 0;
+    if coord.1 > 0 {
+        if graph[coord.0][coord.1].0 + 1 == graph[coord.0][coord.1 - 1].0 {
+            adj.push((coord.0, coord.1 - 1));
+        }
     }
 
-    if prev == up {
-        println!("not up");
-        return get_path_grade(map, down, curr_coord)
-            + get_path_grade(map, left, curr_coord)
-            + get_path_grade(map, right, curr_coord);
+    if coord.0 < graph.len() - 1 {
+        if graph[coord.0][coord.1].0 + 1 == graph[coord.0 + 1][coord.1].0 {
+            adj.push((coord.0 + 1, coord.1));
+        }
     }
 
-    if prev == left {
-        println!("not left");
-        return get_path_grade(map, up, curr_coord)
-            + get_path_grade(map, down, curr_coord)
-            + get_path_grade(map, right, curr_coord);
+    if coord.1 < graph[0].len() - 1 {
+        if graph[coord.0][coord.1].0 + 1 == graph[coord.0][coord.1 + 1].0 {
+            adj.push((coord.0, coord.1 + 1));
+        }
     }
 
-    if prev == right {
-        println!("not right");
-        return get_path_grade(map, up, curr_coord)
-            + get_path_grade(map, down, curr_coord)
-            + get_path_grade(map, left, curr_coord);
-    }
-
-    if *curr == 9 {
-        println!("hit");
-        return 1;
-    }
-
-    return 0;
+    adj
 }
