@@ -8,13 +8,16 @@ pub fn run() {
     for line in input.lines() {
         let tmp = line.split_whitespace();
         for num in tmp {
-            println!("{num}");
             stones.push(num.parse().unwrap());
         }
     }
 
-    for _ in 0..25 {
-        blink(&mut stones);
+    for i in 0..25 {
+        //println!("{:?}", stones);
+        //if i == 5 {
+        //    break;
+        //}
+        //blink(&mut stones);
     }
 
     print!("Stones part 1: {}\n", stones.iter().count());
