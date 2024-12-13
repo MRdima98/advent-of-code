@@ -1,64 +1,60 @@
-use std::usize;
+use std::{collections::HashMap, usize};
 
 pub fn run() {
     let input = include_str!("../input");
     let mut farm = vec![];
-    let mut plots = vec![];
 
     for line in input.lines() {
         let mut tmp = vec![];
         for c in line.chars() {
-            tmp.push((c, false));
+            tmp.push((c.to_string(), false));
         }
         farm.push(tmp);
     }
 
-    plots = get_plots(&mut farm.clone());
+    let plots = get_plots(&mut farm.clone());
 
     let mut sum = 0;
-    for plot in plots.iter() {
+    for plot in plots {
+        println!(
+            "Size: {} {}",
+            farm[plot.1[0].0][plot.1[0].1].0,
+            plot.1.len(),
+        );
         //println!(
         //    "Size: {}{}, plot: {:?}",
-        //    plot.len(),
-        //    farm[plot[0].0][plot[0].1].0,
+        //    plot.1.len(),
+        //    farm[plot.1[0].0][plot.1[0].1].0,
         //    plot
         //);
         let mut perimeter = 0;
-        for plant in plot {
+        for plant in plot.1.iter() {
             perimeter += get_not_neighbours(&mut farm, *plant).len();
         }
-        println!(
-            "{}: {} * {perimeter}",
-            farm[plot[0].0][plot[0].1].0,
-            plot.len()
-        );
-        sum += perimeter * plot.len();
+        sum += perimeter * plot.1.len();
     }
 
     println!("\n My sum is: {sum}");
 }
 
-fn get_plots(farm: &mut Vec<Vec<(char, bool)>>) -> Vec<Vec<(usize, usize)>> {
+fn get_plots(farm: &mut Vec<Vec<(String, bool)>>) -> HashMap<String, Vec<(usize, usize)>> {
     let mut farm = farm;
-    let mut plots = vec![];
+    let mut plots: HashMap<String, Vec<(usize, usize)>> = HashMap::new();
 
     for i in 0..farm.len() {
-        let mut plot: Vec<(usize, usize)> = vec![];
+        let mut unique = "".to_string();
         for j in 0..farm[0].len() {
             if farm[i][j].1 {
-                println!("{}", farm[i][j].0);
                 continue;
             }
 
             let mut queue = vec![];
-            if !plot.is_empty() {
-                let prev = plot.first().unwrap();
-                if farm[prev.0][prev.1].0 != farm[i][j].0 {
-                    continue;
-                }
-            }
             queue.push((i, j));
-            plot.push((i, j));
+            unique = unique + &i.to_string() + &j.to_string();
+            plots
+                .entry(farm[i][j].0.clone() + &unique)
+                .and_modify(|plot| plot.push((i, j)))
+                .or_insert(vec![(i, j)]);
             farm[i][j].1 = true;
 
             while !queue.is_empty() {
@@ -68,29 +64,27 @@ fn get_plots(farm: &mut Vec<Vec<(char, bool)>>) -> Vec<Vec<(usize, usize)>> {
                 for ghebur in neighbours {
                     if !farm[ghebur.0][ghebur.1].1 {
                         farm[ghebur.0][ghebur.1].1 = true;
-                        plot.push(ghebur);
+                        plots
+                            .entry(farm[ghebur.0][ghebur.1].0.clone() + &unique)
+                            .and_modify(|plot| plot.push(ghebur))
+                            .or_insert(vec![ghebur]);
                         queue.push(ghebur);
                     }
                 }
             }
-        }
-
-        if !plot.is_empty() {
-            plots.push(plot);
         }
     }
 
     plots
 }
 
-fn get_neighbours(farm: &mut [Vec<(char, bool)>], coord: (usize, usize)) -> Vec<(usize, usize)> {
+fn get_neighbours(farm: &mut [Vec<(String, bool)>], coord: (usize, usize)) -> Vec<(usize, usize)> {
     let mut neighbours = vec![];
 
     if coord.0 > 0 {
         if farm[coord.0][coord.1].0 == farm[coord.0 - 1][coord.1].0 {
             neighbours.push((coord.0 - 1, coord.1));
         }
-    } else {
     }
 
     if coord.1 > 0 {
@@ -115,7 +109,7 @@ fn get_neighbours(farm: &mut [Vec<(char, bool)>], coord: (usize, usize)) -> Vec<
 }
 
 fn get_not_neighbours(
-    farm: &mut [Vec<(char, bool)>],
+    farm: &mut [Vec<(String, bool)>],
     coord: (usize, usize),
 ) -> Vec<(usize, usize)> {
     let mut neighbours = vec![];
