@@ -38,6 +38,7 @@ fn blink(stones: &mut Vec<u64>) {
         }
 
         let tmp = stone.to_string();
+        thread::sleep(time::Duration::from_millis(300));
         if tmp.len() % 2 == 0 {
             stones.remove(i);
             let first_half: u64 = tmp[..tmp.len() / 2].parse().unwrap();
