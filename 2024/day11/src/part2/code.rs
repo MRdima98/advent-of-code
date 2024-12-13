@@ -1,5 +1,5 @@
 use core::time;
-use std::{collections::HashMap, thread};
+use std::{collections::HashMap, thread, usize};
 
 pub fn run() {
     let input = include_str!("../input");
@@ -12,41 +12,27 @@ pub fn run() {
         }
     }
 
-    for i in 0..25 {
-        println!("Blink {i}, {:?}", stones);
-        blink(&mut stones);
-        //if i == 7 {
-        //    break;
-        //}
+    for i in 0..75 {
+        stones = blink(&stones);
     }
 
     let mut sum: usize = stones.values().sum();
 
-    //for el in stones.values() {
-    //    sum += *el;
-    //}
-
     print!("\nStones part 2: {}\n", sum);
 }
 
-fn blink(stones: &mut HashMap<usize, usize>) {
-    let mut keys: Vec<_> = stones.clone().into_keys().collect();
-    //println!("{:?}", keys);
-    //println!("{:?}", stones.clone().values());
-    //println!();
-    //thread::sleep(time::Duration::from_millis(300));
-    keys.sort();
+fn blink(stones: &HashMap<usize, usize>) -> HashMap<usize, usize> {
+    let mut keys = stones.clone().into_keys();
+    let mut new_stones: HashMap<usize, usize> = HashMap::new();
+
     for key in keys {
-        //println!("{:?}", stones);
-        //thread::sleep(time::Duration::from_millis(300));
-        //let val = stones.get(&key).unwrap().clone();
-        let mut val = 1;
-        if let Some(tmp) = stones.remove(&key) {
-            val = tmp;
-        }
+        let mut val = stones.get(&key).unwrap();
 
         if key == 0 {
-            stones.entry(1).and_modify(|el| *el += val).or_insert(val);
+            new_stones
+                .entry(1)
+                .and_modify(|el| *el += *val)
+                .or_insert(*val);
             continue;
         }
 
@@ -55,19 +41,21 @@ fn blink(stones: &mut HashMap<usize, usize>) {
             let first_half = tmp[..tmp.len() / 2].parse().unwrap();
             let second_half = tmp[(tmp.len() / 2)..].parse().unwrap();
 
-            stones
+            new_stones
                 .entry(first_half)
-                .and_modify(|el| *el += val)
-                .or_insert(val);
-            stones
+                .and_modify(|el| *el += *val)
+                .or_insert(*val);
+            new_stones
                 .entry(second_half)
-                .and_modify(|el| *el += val)
-                .or_insert(val);
+                .and_modify(|el| *el += *val)
+                .or_insert(*val);
         } else {
-            stones
+            new_stones
                 .entry(key * 2024)
-                .and_modify(|el| *el += val)
-                .or_insert(val);
+                .and_modify(|el| *el += *val)
+                .or_insert(*val);
         }
     }
+
+    new_stones
 }
