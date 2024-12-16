@@ -1,6 +1,11 @@
 use core::{panic, time};
 use std::{collections::HashMap, thread, usize};
 
+// go throuw each eleement.
+// Every elem up and down is a HORIZONTAL fence
+// Every elem left and right is a VERTICAL fence
+// Check the difference in the arrays. Any diff more than 1 is a side
+
 pub fn run() {
     let input = include_str!("../input");
     let mut farm = vec![];
@@ -29,7 +34,6 @@ pub fn run() {
     }
 
     let mut sum = 0;
-    pretty_print(&padded_farm);
     for (_, plot) in plots {
         let mut shadow_padded_farm = padded_farm.clone();
         let mut fence = vec![];
@@ -41,19 +45,13 @@ pub fn run() {
             fence.extend(non_neighbour);
         }
 
-        let sides = calc_sides(
-            &mut shadow_padded_farm,
-            &fence,
-            farm[plot[0].0][plot[0].1].0.to_string(),
-        );
+        let sides = calc_sides(&shadow_padded_farm, &plot);
 
-        //println!();
-        pretty_print(&shadow_padded_farm);
         println!(
-            "{}: {} * {} = {}\n",
+            "{}: {} * {} = {}",
             farm[plot[0].0][plot[0].1].0,
-            plot.len(),
             sides,
+            plot.len(),
             sides * plot.len(),
         );
         sum += sides * plot.len();
@@ -62,45 +60,80 @@ pub fn run() {
     println!("\n Sum part 2: {sum}");
 }
 
-fn calc_sides(
-    farm: &mut Vec<Vec<(String, bool)>>,
-    coords: &[(usize, usize)],
-    letter: String,
-) -> usize {
-    let mut count = 0;
-    let mut already_done: Vec<(usize, usize)> = vec![];
+fn calc_sides(farm: &[Vec<(String, bool)>], plot: &[(usize, usize)]) -> usize {
+    let mut vertical_fence: HashMap<(usize, usize), usize> = HashMap::new();
+    let mut horizonta_fence: HashMap<(usize, usize), usize> = HashMap::new();
+    let fence = "~".to_string();
 
-    for coord in coords.iter() {
-        let fence = "~".to_string();
-        if already_done.contains(coord) {
-            continue;
-        } else {
-            already_done.push(*coord);
+    let mut count = 0;
+    for plant in plot {
+        if farm[plant.0 - 1 + 2][plant.1 + 2].0 == fence {
+            horizonta_fence
+                .entry((plant.0 - 1 + 2, plant.1 + 2))
+                .and_modify(|f| *f += 1)
+                .or_insert(1);
         }
 
-        let up = farm[coord.0 - 1][coord.1].0.clone();
-        let left = farm[coord.0][coord.1 - 1].0.clone();
-        let right = farm[coord.0][coord.1 + 1].0.clone();
-        let down = farm[coord.0 + 1][coord.1].0.clone();
+        if farm[plant.0 + 1 + 2][plant.1 + 2].0 == fence {
+            horizonta_fence
+                .entry((plant.0 + 1 + 2, plant.1 + 2))
+                .and_modify(|f| *f += 1)
+                .or_insert(1);
+        }
 
-        count += edge_cases(farm, *coord, letter.clone());
-        count += small_pot_edge_case(farm, *coord, fence.clone());
+        if farm[plant.0 + 2][plant.1 - 1 + 2].0 == fence {
+            vertical_fence
+                .entry((plant.1 - 1 + 2, plant.0 + 2))
+                .and_modify(|f| *f += 1)
+                .or_insert(1);
+        }
 
-        count += base_corner(&fence, &up, &left);
-        count += base_corner(&fence, &down, &left);
-        count += base_corner(&fence, &up, &right);
-        count += base_corner(&fence, &down, &right);
+        if farm[plant.0 + 2][plant.1 + 1 + 2].0 == fence {
+            vertical_fence
+                .entry((plant.1 + 1 + 2, plant.0 + 2))
+                .and_modify(|f| *f += 1)
+                .or_insert(1);
+        }
     }
+
+    count += determine_side(&mut vertical_fence.clone(), farm);
+    count += determine_side(&mut horizonta_fence.clone(), farm);
 
     count
 }
 
-fn base_corner(fence: &String, adj1: &String, adj2: &String) -> usize {
-    if fence == adj1 && fence == adj2 {
-        println!("Base");
-        return 1;
+fn determine_side(
+    fence: &mut HashMap<(usize, usize), usize>,
+    farm: &[Vec<(String, bool)>],
+) -> usize {
+    let mut count = 1;
+    let mut keys: Vec<(usize, usize)> = fence.keys().cloned().collect();
+    keys.sort();
+    let first = keys.first().cloned().unwrap();
+    let mut prev = first;
+
+    let mut max = 1;
+    for key in keys {
+        if key == first {
+            continue;
+        }
+
+        if *fence.get(&key).unwrap() > max {
+            max = *fence.get(&key).unwrap();
+        }
+
+        print!("{}", farm[key.0][key.1].0);
+
+        if !(key.0 == prev.0 && key.1 - prev.1 == 1) {
+            println!();
+            count += max;
+            max = 1;
+        }
+
+        prev = key;
     }
-    return 0;
+
+    count
 }
 
 fn get_plots(farm: &mut Vec<Vec<(String, bool)>>) -> HashMap<String, Vec<(usize, usize)>> {
@@ -213,72 +246,4 @@ fn get_not_neighbours_improved(
     }
 
     neighbours
-}
-
-fn pretty_print(farm: &[Vec<(String, bool)>]) {
-    for row in farm {
-        for el in row {
-            print!("{}", el.0);
-        }
-        println!();
-    }
-}
-
-fn edge_cases(farm: &mut Vec<Vec<(String, bool)>>, coord: (usize, usize), letter: String) -> usize {
-    let mut corner_case = vec![];
-    corner_case.push(farm[coord.0 - 1][coord.1].0.clone());
-    corner_case.push(farm[coord.0][coord.1 - 1].0.clone());
-    corner_case.push(farm[coord.0][coord.1 + 1].0.clone());
-    corner_case.push(farm[coord.0 + 1][coord.1].0.clone());
-
-    let mut count = 0;
-    for case in corner_case {
-        if letter == case {
-            count += 1;
-        }
-    }
-
-    if count > 2 {
-        println!("Egde 1: {:?}", coord);
-        let mut corner_case = vec![];
-        corner_case.push(farm[coord.0 + 1][coord.1 + 1].0.clone());
-        corner_case.push(farm[coord.0 - 1][coord.1 - 1].0.clone());
-        corner_case.push(farm[coord.0 - 1][coord.1 + 1].0.clone());
-        corner_case.push(farm[coord.0 + 1][coord.1 - 1].0.clone());
-
-        let mut count = 0;
-        for case in corner_case {
-            if letter == case {
-                count += 1;
-            }
-        }
-
-        if count >= 2 {
-            println!("Egde 2: {:?}", coord);
-            return 2;
-        }
-        1
-    } else {
-        0
-    }
-}
-
-fn small_pot_edge_case(
-    farm: &mut Vec<Vec<(String, bool)>>,
-    coord: (usize, usize),
-    letter: String,
-) -> usize {
-    let mut corner_case = vec![];
-    corner_case.push(farm[coord.0 - 1][coord.1].0.clone());
-    corner_case.push(farm[coord.0][coord.1 - 1].0.clone());
-    corner_case.push(farm[coord.0][coord.1 + 1].0.clone());
-    corner_case.push(farm[coord.0 + 1][coord.1].0.clone());
-
-    for case in corner_case {
-        if letter == case {
-            return 0;
-        }
-    }
-    println!("Small pot: {:?}", coord);
-    2
 }
