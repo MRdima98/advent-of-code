@@ -1,10 +1,5 @@
-use core::{panic, time};
-use std::{collections::HashMap, thread, usize};
-
-// go throuw each eleement.
-// Every elem up and down is a HORIZONTAL fence
-// Every elem left and right is a VERTICAL fence
-// Check the difference in the arrays. Any diff more than 1 is a side
+use core::{panic, prelude, time};
+use std::{collections::HashMap, thread, usize, vec};
 
 pub fn run() {
     let input = include_str!("../input");
@@ -18,7 +13,7 @@ pub fn run() {
         farm.push(tmp);
     }
 
-    let plots = get_plots(&mut farm.clone());
+    let mut plots = get_plots(&mut farm.clone());
 
     let mut padded_farm = farm.clone();
     padded_farm.push(vec![("*".to_string(), false); padded_farm[0].len()]);
@@ -33,6 +28,13 @@ pub fn run() {
         row.insert(0, ("*".to_string(), true));
     }
 
+    for (_, plot) in plots.iter_mut() {
+        for plant in plot.iter_mut() {
+            plant.0 += 2;
+            plant.1 += 2;
+        }
+    }
+
     let mut sum = 0;
     for (_, plot) in plots {
         let mut shadow_padded_farm = padded_farm.clone();
@@ -45,92 +47,75 @@ pub fn run() {
             fence.extend(non_neighbour);
         }
 
-        let sides = calc_sides(&shadow_padded_farm, &plot);
+        let mut sides = get_sides(&shadow_padded_farm, &plot);
 
-        println!(
-            "{}: {} * {} = {}",
-            farm[plot[0].0][plot[0].1].0,
-            sides,
-            plot.len(),
-            sides * plot.len(),
-        );
+        let mut inverted_shadow_farm = shadow_padded_farm.clone();
+        for (i, row) in shadow_padded_farm.iter().enumerate() {
+            for (j, el) in row.iter().enumerate() {
+                inverted_shadow_farm[j][i] = el.clone();
+            }
+        }
+
+        let mut inverted_plot = vec![];
+        for el in plot.iter() {
+            inverted_plot.push((el.1, el.0));
+        }
+
+        sides += get_sides(&inverted_shadow_farm, &inverted_plot);
+
         sum += sides * plot.len();
     }
 
     println!("\n Sum part 2: {sum}");
 }
 
-fn calc_sides(farm: &[Vec<(String, bool)>], plot: &[(usize, usize)]) -> usize {
-    let mut vertical_fence: HashMap<(usize, usize), usize> = HashMap::new();
-    let mut horizonta_fence: HashMap<(usize, usize), usize> = HashMap::new();
+fn get_sides(farm: &[Vec<(String, bool)>], plot: &[(usize, usize)]) -> usize {
+    let mut upper_fence = vec![];
+    let mut lower_fence = vec![];
     let fence = "~".to_string();
+    let mut sides = 0;
+    for (i, row) in farm.iter().enumerate() {
+        for (j, _) in row.iter().enumerate() {
+            if !plot.contains(&(i, j)) {
+                continue;
+            }
 
-    let mut count = 0;
-    for plant in plot {
-        if farm[plant.0 - 1 + 2][plant.1 + 2].0 == fence {
-            horizonta_fence
-                .entry((plant.0 - 1 + 2, plant.1 + 2))
-                .and_modify(|f| *f += 1)
-                .or_insert(1);
-        }
+            if farm[i - 1][j].0 == fence {
+                upper_fence.push((i, j));
+            }
 
-        if farm[plant.0 + 1 + 2][plant.1 + 2].0 == fence {
-            horizonta_fence
-                .entry((plant.0 + 1 + 2, plant.1 + 2))
-                .and_modify(|f| *f += 1)
-                .or_insert(1);
+            if farm[i + 1][j].0 == fence {
+                lower_fence.push((i, j));
+            }
         }
-
-        if farm[plant.0 + 2][plant.1 - 1 + 2].0 == fence {
-            vertical_fence
-                .entry((plant.1 - 1 + 2, plant.0 + 2))
-                .and_modify(|f| *f += 1)
-                .or_insert(1);
-        }
-
-        if farm[plant.0 + 2][plant.1 + 1 + 2].0 == fence {
-            vertical_fence
-                .entry((plant.1 + 1 + 2, plant.0 + 2))
-                .and_modify(|f| *f += 1)
-                .or_insert(1);
-        }
+        upper_fence.sort();
+        lower_fence.sort();
+        sides += count_sides(&upper_fence);
+        sides += count_sides(&lower_fence);
+        upper_fence = vec![];
+        lower_fence = vec![];
     }
 
-    count += determine_side(&mut vertical_fence.clone(), farm);
-    count += determine_side(&mut horizonta_fence.clone(), farm);
-
-    count
+    sides
 }
 
-fn determine_side(
-    fence: &mut HashMap<(usize, usize), usize>,
-    farm: &[Vec<(String, bool)>],
-) -> usize {
+fn count_sides(arr: &[(usize, usize)]) -> usize {
+    if arr.is_empty() {
+        return 0;
+    }
     let mut count = 1;
-    let mut keys: Vec<(usize, usize)> = fence.keys().cloned().collect();
-    keys.sort();
-    let first = keys.first().cloned().unwrap();
+    let first = arr.first().unwrap();
     let mut prev = first;
-
-    let mut max = 1;
-    for key in keys {
-        if key == first {
+    for el in arr {
+        if el == first {
             continue;
         }
 
-        if *fence.get(&key).unwrap() > max {
-            max = *fence.get(&key).unwrap();
+        if !(el.0 == prev.0 && el.1 - prev.1 == 1) {
+            count += 1;
         }
 
-        print!("{}", farm[key.0][key.1].0);
-
-        if !(key.0 == prev.0 && key.1 - prev.1 == 1) {
-            println!();
-            count += max;
-            max = 1;
-        }
-
-        prev = key;
+        prev = el;
     }
 
     count
@@ -214,35 +199,35 @@ fn get_not_neighbours_improved(
     let mut neighbours = vec![];
 
     if !plot.contains(&(coord.0 - 1, coord.1)) {
-        neighbours.push((coord.0 + 2 - 1, coord.1 + 2));
+        neighbours.push((coord.0 - 1, coord.1));
     }
 
     if !plot.contains(&(coord.0, coord.1 - 1)) {
-        neighbours.push((coord.0 + 2, coord.1 - 1 + 2));
+        neighbours.push((coord.0, coord.1 - 1));
     }
 
     if !plot.contains(&(coord.0 + 1, coord.1)) {
-        neighbours.push((coord.0 + 2 + 1, coord.1 + 2));
+        neighbours.push((coord.0 + 1, coord.1));
     }
 
     if !plot.contains(&(coord.0, coord.1 + 1)) {
-        neighbours.push((coord.0 + 2, coord.1 + 1 + 2));
+        neighbours.push((coord.0, coord.1 + 1));
     }
 
     if !plot.contains(&(coord.0 + 1, coord.1 + 1)) {
-        neighbours.push((coord.0 + 2 + 1, coord.1 + 1 + 2));
+        neighbours.push((coord.0 + 1, coord.1 + 1));
     }
 
     if !plot.contains(&(coord.0 - 1, coord.1 + 1)) {
-        neighbours.push((coord.0 + 2 - 1, coord.1 + 1 + 2));
+        neighbours.push((coord.0 - 1, coord.1 + 1));
     }
 
     if !plot.contains(&(coord.0 - 1, coord.1 - 1)) {
-        neighbours.push((coord.0 + 2 - 1, coord.1 - 1 + 2));
+        neighbours.push((coord.0 - 1, coord.1 - 1));
     }
 
     if !plot.contains(&(coord.0 + 1, coord.1 - 1)) {
-        neighbours.push((coord.0 + 2 + 1, coord.1 - 1 + 2));
+        neighbours.push((coord.0 + 1, coord.1 - 1));
     }
 
     neighbours
