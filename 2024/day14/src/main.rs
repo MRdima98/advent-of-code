@@ -8,6 +8,7 @@ fn main() {
     if args[1] == "1" {
         run1("./input");
     }
+
     if args[1] == "2" {
         run2("./input");
     }
