@@ -91,32 +91,29 @@ pub fn run(path: &str) {
         button_b.push(every_num[i]);
     }
 
+    let big = Coord(10000000000000.0, 10000000000000.0);
     for i in (2..every_num.len()).step_by(3) {
-        prize.push(every_num[i]);
+        prize.push(every_num[i] + big);
     }
 
     let mut sum = 0.0;
     for i in 0..prize.len() {
         sum += get_sums(button_a[i], button_b[i], prize[i]);
     }
-    println!("Sum: {sum}");
+    println!("Tot: {sum}");
 }
 
 fn get_sums(button_a: Coord, button_b: Coord, prize: Coord) -> f64 {
     let y = (prize.1 - (button_a.1 / button_a.0) * prize.0)
         / (-(button_a.1 * button_b.0) / button_a.0 + button_b.1);
-    println!("y: {y}");
     let x = (prize.0 - button_b.0 * y) / button_a.0;
-    println!("x: {x}");
-    println!(
-        "{}",
-        Coord(
-            x * button_a.0 + y * button_b.0,
-            x * button_a.1 + y * button_b.1,
-        )
-    );
-    if (3.0 * x + y).fract() == 0.0 {
-        println!("sum part: {}", 3.0 * x + y);
+
+    let x = x.round();
+    let y = y.round();
+    if (x * button_a.0 + y * button_b.0) as i64 == prize.0 as i64
+        && (x * button_a.1 + y * button_b.1) as i64 == prize.1 as i64
+    {
+        println!("Sum: {}", 3.0 * x + y);
         return 3.0 * x + y;
     }
 

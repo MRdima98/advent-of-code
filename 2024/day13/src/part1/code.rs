@@ -39,7 +39,6 @@ pub fn run(path: &str) {
 
         every_num.push((num1, num2));
     }
-    println!("{:?}", every_num);
 
     for i in (0..every_num.len()).step_by(3) {
         button_A.push(every_num[i]);
@@ -53,10 +52,8 @@ pub fn run(path: &str) {
         prize.push(every_num[i]);
     }
 
-    println!("A: {:?}\nB: {:?}\nP: {:?}\n", button_A, button_B, prize);
     let mut sum = 0;
     for i in 0..prize.len() {
-        println!("Not stuck {i}");
         let mut combos = vec![];
         get_sums(
             button_A[i],
@@ -71,12 +68,14 @@ pub fn run(path: &str) {
         if combos.is_empty() {
             continue;
         }
+
         let mut costs = vec![];
 
         for el in combos {
             costs.push(el.0 * 3 + el.1);
         }
 
+        println!("Sum: {}", costs.iter().min().unwrap());
         sum += costs.iter().min().unwrap();
     }
     println!("Sum is: {:?}", sum);
