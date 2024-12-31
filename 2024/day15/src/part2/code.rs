@@ -168,59 +168,21 @@ fn valid_move(map: &mut [Vec<char>], robot_pos: &mut Coord, dir: Direction) {
         Direction::Right => next_move = Coord(0, 1),
     }
 
-    let mut potential_move = *robot_pos + next_move;
-    let mut tile = map[potential_move.0 as usize][potential_move.1 as usize];
+    let potential_move = *robot_pos + next_move;
+    let tile = map[potential_move.0 as usize][potential_move.1 as usize];
 
     if !(tile == '#' || tile == '[' || tile == ']') {
         *robot_pos = potential_move;
     }
 
-    let mut boxes = vec![];
+    let mut boxes: Vec<FishBox>;
     if tile == '[' || tile == ']' {
-        boxes = bfs(map, potential_move);
+        boxes = bfs(map, potential_move, dir);
 
-        if next_move.0 == 0 {
-            let mut clean_box = vec![];
-            for i in 0..boxes.len() {
-                if boxes[i].coord.0 == robot_pos.0 {
-                    clean_box.push(boxes[i]);
-                } else {
-                    map[boxes[i].coord.0 as usize][boxes[i].coord.1 as usize] = boxes[i].sym;
-                }
-            }
-
-            boxes = clean_box;
-        } else if next_move.0 == 1 {
-            println!("Moving down");
-            let mut clean_box = vec![];
-            for i in 0..boxes.len() {
-                if boxes[i].coord.0 > robot_pos.0 {
-                    clean_box.push(boxes[i]);
-                } else {
-                    map[boxes[i].coord.0 as usize][boxes[i].coord.1 as usize] = boxes[i].sym;
-                }
-            }
-
-            boxes = clean_box;
-        } else if next_move.0 == -1 {
-            println!("Moving up");
-            println!("Robo pos: {robot_pos}");
-            let mut clean_box = vec![];
-            for i in 0..boxes.len() {
-                if boxes[i].coord.0 < robot_pos.0 {
-                    clean_box.push(boxes[i]);
-                } else {
-                    map[boxes[i].coord.0 as usize][boxes[i].coord.1 as usize] = boxes[i].sym;
-                }
-            }
-
-            boxes = clean_box;
-        }
-
-        for ele in boxes.iter() {
-            print!("{} ", ele.coord);
-        }
-        println!();
+        //for ele in boxes.iter() {
+        //    print!("{} ", ele.coord);
+        //}
+        //println!();
 
         let valid = check_walls(map, boxes.clone(), next_move);
 
@@ -237,7 +199,7 @@ fn valid_move(map: &mut [Vec<char>], robot_pos: &mut Coord, dir: Direction) {
         }
 
         if !boxes.is_empty() {
-            println!("Potential move: {potential_move}");
+            //println!("Potential move: {potential_move}");
             *robot_pos = potential_move;
         }
     }
@@ -291,29 +253,42 @@ fn pretty_print(map: &[Vec<char>]) {
     println!();
 }
 
-// TODO
-// You need a specific kind of bfs, two actually
-// one that check ONLY above head
-// one that check only rows
-fn bfs(map: &mut [Vec<char>], start: Coord) -> Vec<FishBox> {
+fn bfs(map: &mut [Vec<char>], start: Coord, dir: Direction) -> Vec<FishBox> {
     let mut queue = vec![];
-    let mut fishBox = vec![];
+    let mut fish_box = vec![];
 
     queue.push(start);
-    fishBox.push(FishBox {
+    fish_box.push(FishBox {
         coord: start,
         sym: map[start.0 as usize][start.1 as usize],
     });
-    map[start.0 as usize][start.1 as usize] = '.';
+    //map[start.0 as usize][start.1 as usize] = '.';
 
     while !queue.is_empty() {
         let curr = queue.pop().unwrap();
-        let neighbours = get_neighbour(map, curr);
+        let neighbours: Vec<Coord>;
+
+        match dir {
+            Direction::Up => {
+                neighbours = get_up_neighbours(map, curr);
+            }
+            Direction::Down => {
+                neighbours = get_down_neighbours(map, curr);
+            }
+            Direction::Left => {
+                neighbours = get_left_neighbours(map, curr);
+            }
+            Direction::Right => {
+                neighbours = get_right_neighbours(map, curr);
+            }
+        }
 
         for neigh in neighbours.iter() {
+            //println!("Neigh: {neigh}");
+            pretty_print(map);
             if !(map[neigh.0 as usize][neigh.1 as usize] == '.') {
                 queue.push(*neigh);
-                fishBox.push(FishBox {
+                fish_box.push(FishBox {
                     coord: *neigh,
                     sym: map[neigh.0 as usize][neigh.1 as usize],
                 });
@@ -322,19 +297,16 @@ fn bfs(map: &mut [Vec<char>], start: Coord) -> Vec<FishBox> {
         }
     }
 
-    fishBox
+    //for fish in fish_box.iter() {
+    //    println!("{}", fish.coord);
+    //}
+
+    fish_box
 }
 
-fn get_neighbour(map: &mut [Vec<char>], node: Coord) -> Vec<Coord> {
+fn get_right_neighbours(map: &mut [Vec<char>], node: Coord) -> Vec<Coord> {
     let mut pot_neighbours = vec![];
-    pot_neighbours.push(node - Coord(-1, 0));
-    pot_neighbours.push(node - Coord(-1, -1));
-    pot_neighbours.push(node - Coord(-1, 1));
-    pot_neighbours.push(node - Coord(1, 0));
-    pot_neighbours.push(node - Coord(1, -1));
-    pot_neighbours.push(node - Coord(1, 1));
-    pot_neighbours.push(node - Coord(0, -1));
-    pot_neighbours.push(node - Coord(0, 1));
+    pot_neighbours.push(node + Coord(0, 1));
     let mut neighbours = vec![];
 
     for neigh in pot_neighbours {
@@ -347,49 +319,87 @@ fn get_neighbour(map: &mut [Vec<char>], node: Coord) -> Vec<Coord> {
     neighbours
 }
 
-//boxes.push(FishBox {
-//    coord: potential_move,
-//    sym: map[potential_move.0 as usize][potential_move.1 as usize],
-//});
-//boxes.push(FishBox {
-//    coord: potential_move + next_move,
-//    sym: map[(potential_move.0 + next_move.0) as usize]
-//        [(potential_move.1 + next_move.1) as usize],
-//});
-//loop {
-//    potential_move = potential_move + next_move + next_move;
-//    tile = map[potential_move.0 as usize][potential_move.1 as usize];
-//
-//    if tile == '[' {
-//        boxes.push(FishBox {
-//            coord: potential_move,
-//            sym: map[potential_move.0 as usize][potential_move.1 as usize],
-//        });
-//        boxes.push(FishBox {
-//            coord: potential_move + next_move,
-//            sym: map[(potential_move.0 + next_move.0) as usize]
-//                [(potential_move.1 + next_move.1) as usize],
-//        });
-//    }
-//
-//    if tile == ']' {
-//        boxes.push(FishBox {
-//            coord: potential_move,
-//            sym: map[potential_move.0 as usize][potential_move.1 as usize],
-//        });
-//        boxes.push(FishBox {
-//            coord: potential_move + next_move,
-//            sym: map[(potential_move.0 + next_move.0) as usize]
-//                [(potential_move.1 + next_move.1) as usize],
-//        });
-//    }
-//
-//    if tile == '#' {
-//        boxes = vec![];
-//        break;
-//    }
-//
-//    if tile == '.' {
-//        break;
-//    }
-//}
+fn get_left_neighbours(map: &mut [Vec<char>], node: Coord) -> Vec<Coord> {
+    let mut pot_neighbours = vec![];
+    pot_neighbours.push(node + Coord(0, -1));
+    let mut neighbours = vec![];
+
+    for neigh in pot_neighbours {
+        let tmp = map[neigh.0 as usize][neigh.1 as usize];
+        if tmp == '[' || tmp == ']' {
+            neighbours.push(neigh)
+        }
+    }
+
+    neighbours
+}
+
+fn get_down_neighbours(map: &mut [Vec<char>], node: Coord) -> Vec<Coord> {
+    let mut pot_neighbours = vec![];
+    pot_neighbours.push(node + Coord(1, 0));
+
+    if map[node.0 as usize][node.1 as usize] == '[' {
+        pot_neighbours.push(node + Coord(1, 1));
+        pot_neighbours.push(node + Coord(0, 1));
+    } else {
+        pot_neighbours.push(node + Coord(1, -1));
+        pot_neighbours.push(node + Coord(0, -1));
+    }
+
+    let mut neighbours = vec![];
+    for el in pot_neighbours.iter() {
+        print!("Move {} ", el);
+    }
+    println!();
+
+    for neigh in pot_neighbours {
+        let tmp = map[neigh.0 as usize][neigh.1 as usize];
+        if tmp == '[' {
+            neighbours.push(neigh);
+            neighbours.push(neigh + Coord(0, 1));
+        }
+
+        if tmp == ']' {
+            neighbours.push(neigh);
+            neighbours.push(neigh + Coord(0, -1));
+        }
+    }
+
+    neighbours
+}
+
+fn get_up_neighbours(map: &mut [Vec<char>], node: Coord) -> Vec<Coord> {
+    let mut pot_neighbours = vec![];
+    pot_neighbours.push(node + Coord(-1, 0));
+
+    if map[node.0 as usize][node.1 as usize] == '[' {
+        pot_neighbours.push(node + Coord(-1, 1));
+        pot_neighbours.push(node + Coord(0, 1));
+    } else {
+        pot_neighbours.push(node + Coord(-1, -1));
+        pot_neighbours.push(node + Coord(0, -1));
+    }
+
+    let mut neighbours = vec![];
+
+    print!("Pot neighb");
+    for el in pot_neighbours.iter() {
+        print!(" {} ", el);
+    }
+    println!();
+
+    for neigh in pot_neighbours {
+        let tmp = map[neigh.0 as usize][neigh.1 as usize];
+        if tmp == '[' {
+            neighbours.push(neigh);
+            //neighbours.push(neigh + Coord(0, 1));
+        }
+
+        if tmp == ']' {
+            neighbours.push(neigh);
+            //neighbours.push(neigh + Coord(0, -1));
+        }
+    }
+
+    neighbours
+}
