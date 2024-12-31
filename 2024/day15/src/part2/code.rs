@@ -56,7 +56,7 @@ struct FishBox {
     sym: char,
 }
 
-pub fn run(path: &str) {
+pub fn run(path: &str) -> Vec<Vec<char>> {
     let input: String = fs::read_to_string(path).unwrap();
     let mut map = vec![];
     let mut moves = vec![];
@@ -75,7 +75,9 @@ pub fn run(path: &str) {
 
             if c == '#' || c == '.' || c == 'O' || c == '@' {
                 tmp.push(c);
-            } else {
+            }
+
+            if c == '^' || c == 'v' || c == '>' || c == '<' {
                 moves.push(c);
             }
         }
@@ -111,7 +113,7 @@ pub fn run(path: &str) {
         }
     }
 
-    pretty_print(&wide_map);
+    //pretty_print(&wide_map);
 
     move_robot(&mut wide_map, &moves, &mut robot_pos);
 
@@ -124,11 +126,14 @@ pub fn run(path: &str) {
         }
     }
 
+    //println!("Last print");
+    //pretty_print(&wide_map);
+
     print!("Res is: {sum}");
+    wide_map
 }
 
 fn move_robot(map: &mut [Vec<char>], moves: &[char], robot_pos: &mut Coord) {
-    //pretty_print(map);
     for dir in moves {
         map[robot_pos.0 as usize][robot_pos.1 as usize] = '.';
         match dir {
@@ -150,11 +155,7 @@ fn move_robot(map: &mut [Vec<char>], moves: &[char], robot_pos: &mut Coord) {
             }
         }
         //pretty_print(map);
-        //map[robot_pos.0 as usize][robot_pos.1 as usize] = '@';
-        pretty_print(map);
         //thread::sleep(time::Duration::from_millis(250));
-        //thread::sleep(time::Duration::from_millis(500));
-        //print!(" {}[2J", 27 as char);
     }
 }
 
@@ -284,8 +285,7 @@ fn bfs(map: &mut [Vec<char>], start: Coord, dir: Direction) -> Vec<FishBox> {
         }
 
         for neigh in neighbours.iter() {
-            //println!("Neigh: {neigh}");
-            pretty_print(map);
+            //pretty_print(map);
             if !(map[neigh.0 as usize][neigh.1 as usize] == '.') {
                 queue.push(*neigh);
                 fish_box.push(FishBox {
@@ -296,10 +296,6 @@ fn bfs(map: &mut [Vec<char>], start: Coord, dir: Direction) -> Vec<FishBox> {
             }
         }
     }
-
-    //for fish in fish_box.iter() {
-    //    println!("{}", fish.coord);
-    //}
 
     fish_box
 }
@@ -339,18 +335,21 @@ fn get_down_neighbours(map: &mut [Vec<char>], node: Coord) -> Vec<Coord> {
     pot_neighbours.push(node + Coord(1, 0));
 
     if map[node.0 as usize][node.1 as usize] == '[' {
-        pot_neighbours.push(node + Coord(1, 1));
         pot_neighbours.push(node + Coord(0, 1));
-    } else {
-        pot_neighbours.push(node + Coord(1, -1));
+        pot_neighbours.push(node + Coord(1, 1));
+    }
+
+    if map[node.0 as usize][node.1 as usize] == ']' {
         pot_neighbours.push(node + Coord(0, -1));
+        pot_neighbours.push(node + Coord(1, -1));
     }
 
     let mut neighbours = vec![];
-    for el in pot_neighbours.iter() {
-        print!("Move {} ", el);
-    }
-    println!();
+
+    //for el in pot_neighbours.iter() {
+    //    print!("Move {} ", el);
+    //}
+    //println!();
 
     for neigh in pot_neighbours {
         let tmp = map[neigh.0 as usize][neigh.1 as usize];
@@ -364,42 +363,135 @@ fn get_down_neighbours(map: &mut [Vec<char>], node: Coord) -> Vec<Coord> {
             neighbours.push(neigh + Coord(0, -1));
         }
     }
+    map[node.0 as usize][node.1 as usize] = '.';
 
     neighbours
 }
 
 fn get_up_neighbours(map: &mut [Vec<char>], node: Coord) -> Vec<Coord> {
     let mut pot_neighbours = vec![];
+    let mut neighbours = vec![];
     pot_neighbours.push(node + Coord(-1, 0));
 
     if map[node.0 as usize][node.1 as usize] == '[' {
         pot_neighbours.push(node + Coord(-1, 1));
-        pot_neighbours.push(node + Coord(0, 1));
-    } else {
+        neighbours.push(node + Coord(0, 1));
+    }
+
+    if map[node.0 as usize][node.1 as usize] == ']' {
         pot_neighbours.push(node + Coord(-1, -1));
-        pot_neighbours.push(node + Coord(0, -1));
+        neighbours.push(node + Coord(0, -1));
     }
-
-    let mut neighbours = vec![];
-
-    print!("Pot neighb");
-    for el in pot_neighbours.iter() {
-        print!(" {} ", el);
-    }
-    println!();
 
     for neigh in pot_neighbours {
         let tmp = map[neigh.0 as usize][neigh.1 as usize];
+        println!("Tmp: {tmp}, coord: {neigh}");
         if tmp == '[' {
+            println!("HIT left");
             neighbours.push(neigh);
-            //neighbours.push(neigh + Coord(0, 1));
+            neighbours.push(neigh + Coord(0, 1));
         }
 
         if tmp == ']' {
+            println!("HIT right");
             neighbours.push(neigh);
-            //neighbours.push(neigh + Coord(0, -1));
+            neighbours.push(neigh + Coord(0, -1));
         }
     }
 
+    //print!("Neighbourt");
+    //for el in neighbours.iter() {
+    //    print!(" {} ", el);
+    //}
+    //println!();
+
+    map[node.0 as usize][node.1 as usize] = '.';
+
     neighbours
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn read_sol(path: &str) -> Vec<Vec<char>> {
+        let input: String = fs::read_to_string(path).unwrap();
+        let mut map = vec![];
+        for line in input.lines() {
+            let mut tmp = vec![];
+            for c in line.chars() {
+                tmp.push(c);
+            }
+            map.push(tmp);
+        }
+
+        map
+    }
+
+    fn readable(map: &[Vec<char>]) -> String {
+        let mut readable = "".to_string();
+
+        for line in map {
+            for c in line {
+                readable += &c.to_string();
+            }
+            readable += "\n";
+        }
+
+        readable
+    }
+
+    #[test]
+    fn base_up() {
+        let res = run("./test_inputs/base_up");
+        let expected = read_sol("./test_inputs/base_up.sol");
+        let res = readable(&res);
+        let expected = readable(&expected);
+        assert_eq!(res, expected, "\nres: \n{res}\nexpected:\n{expected}");
+    }
+
+    #[test]
+    fn right_up() {
+        let res = run("./test_inputs/right_up");
+        let expected = read_sol("./test_inputs/right_up.sol");
+        let res = readable(&res);
+        let expected = readable(&expected);
+        assert_eq!(res, expected, "\nres: \n{res}\nexpected:\n{expected}");
+    }
+
+    #[test]
+    fn base_stacked_up() {
+        let res = run("./test_inputs/base_stacked_up");
+        let expected = read_sol("./test_inputs/base_stacked_up.sol");
+        let res = readable(&res);
+        let expected = readable(&expected);
+        assert_eq!(res, expected, "\nres: \n{res}\nexpected:\n{expected}");
+    }
+
+    #[test]
+    fn one_left_stacked_up() {
+        let res = run("./test_inputs/one_left_stacked_up");
+        let expected = read_sol("./test_inputs/one_left_stacked_up.sol");
+        let res = readable(&res);
+        let expected = readable(&expected);
+        assert_eq!(res, expected, "\nres: \n{res}\nexpected:\n{expected}");
+    }
+
+    #[test]
+    fn one_right_stacked_up() {
+        let res = run("./test_inputs/one_right_stacked_up");
+        let expected = read_sol("./test_inputs/one_right_stacked_up.sol");
+        let res = readable(&res);
+        let expected = readable(&expected);
+        assert_eq!(res, expected, "\nres: \n{res}\nexpected:\n{expected}");
+    }
+
+    #[test]
+    fn double_stacked_up() {
+        let res = run("./test_inputs/double_stacked_up");
+        let expected = read_sol("./test_inputs/double_stacked_up.sol");
+        let res = readable(&res);
+        let expected = readable(&expected);
+        assert_eq!(res, expected, "\nres: \n{res}\nexpected:\n{expected}");
+    }
 }
