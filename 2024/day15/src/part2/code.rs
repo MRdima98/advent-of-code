@@ -113,8 +113,6 @@ pub fn run(path: &str) -> Vec<Vec<char>> {
         }
     }
 
-    //pretty_print(&wide_map);
-
     move_robot(&mut wide_map, &moves, &mut robot_pos);
 
     let mut sum = 0;
@@ -125,9 +123,6 @@ pub fn run(path: &str) -> Vec<Vec<char>> {
             }
         }
     }
-
-    //println!("Last print");
-    //pretty_print(&wide_map);
 
     print!("Res is: {sum}");
     wide_map
@@ -154,13 +149,10 @@ fn move_robot(map: &mut [Vec<char>], moves: &[char], robot_pos: &mut Coord) {
                 map[robot_pos.0 as usize][robot_pos.1 as usize] = 'v';
             }
         }
-        //pretty_print(map);
-        //thread::sleep(time::Duration::from_millis(250));
     }
 }
 
 fn valid_move(map: &mut [Vec<char>], robot_pos: &mut Coord, dir: Direction) {
-    //println!("Robot before: {}", robot_pos);
     let mut next_move: Coord;
     match dir {
         Direction::Up => next_move = Coord(-1, 0),
@@ -180,11 +172,6 @@ fn valid_move(map: &mut [Vec<char>], robot_pos: &mut Coord, dir: Direction) {
     if tile == '[' || tile == ']' {
         boxes = bfs(map, potential_move, dir);
 
-        //for ele in boxes.iter() {
-        //    print!("{} ", ele.coord);
-        //}
-        //println!();
-
         let valid = check_walls(map, boxes.clone(), next_move);
 
         for el in boxes.iter() {
@@ -200,11 +187,9 @@ fn valid_move(map: &mut [Vec<char>], robot_pos: &mut Coord, dir: Direction) {
         }
 
         if !boxes.is_empty() {
-            //println!("Potential move: {potential_move}");
             *robot_pos = potential_move;
         }
     }
-    //println!("Robot after: {}", robot_pos);
 }
 
 fn check_walls(map: &mut [Vec<char>], boxes: Vec<FishBox>, dir: Coord) -> bool {
@@ -285,7 +270,6 @@ fn bfs(map: &mut [Vec<char>], start: Coord, dir: Direction) -> Vec<FishBox> {
         }
 
         for neigh in neighbours.iter() {
-            //pretty_print(map);
             if !(map[neigh.0 as usize][neigh.1 as usize] == '.') {
                 queue.push(*neigh);
                 fish_box.push(FishBox {
@@ -346,11 +330,6 @@ fn get_down_neighbours(map: &mut [Vec<char>], node: Coord) -> Vec<Coord> {
 
     let mut neighbours = vec![];
 
-    //for el in pot_neighbours.iter() {
-    //    print!("Move {} ", el);
-    //}
-    //println!();
-
     for neigh in pot_neighbours {
         let tmp = map[neigh.0 as usize][neigh.1 as usize];
         if tmp == '[' {
@@ -385,25 +364,16 @@ fn get_up_neighbours(map: &mut [Vec<char>], node: Coord) -> Vec<Coord> {
 
     for neigh in pot_neighbours {
         let tmp = map[neigh.0 as usize][neigh.1 as usize];
-        println!("Tmp: {tmp}, coord: {neigh}");
         if tmp == '[' {
-            println!("HIT left");
             neighbours.push(neigh);
             neighbours.push(neigh + Coord(0, 1));
         }
 
         if tmp == ']' {
-            println!("HIT right");
             neighbours.push(neigh);
             neighbours.push(neigh + Coord(0, -1));
         }
     }
-
-    //print!("Neighbourt");
-    //for el in neighbours.iter() {
-    //    print!(" {} ", el);
-    //}
-    //println!();
 
     map[node.0 as usize][node.1 as usize] = '.';
 
