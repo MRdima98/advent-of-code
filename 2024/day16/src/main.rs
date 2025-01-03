@@ -17,4 +17,5 @@ fn main() {
     } else {
         println!("Chief is either 1 or 2");
     }
+
 }
