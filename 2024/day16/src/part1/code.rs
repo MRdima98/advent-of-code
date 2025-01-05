@@ -1,9 +1,10 @@
+use core::time;
 use std::{
     collections::HashMap,
     fmt::Display,
     fs,
     ops::{Add, AddAssign, Sub, SubAssign},
-    usize,
+    thread, usize,
 };
 
 pub fn run(path: &str) {
@@ -30,22 +31,30 @@ pub fn run(path: &str) {
     pretty_print(&map);
 
     let path = A_star(&map, start, goal);
-    println!("Path {:?}", path);
 
-    print!("Hello from part1\n");
+    for ele in path.iter().rev() {
+        map[ele.0][ele.1] = 'O';
+        //print!("{}", *ele + Coord(1, 1));
+    }
+    pretty_print(&map);
 }
 
 fn reconstruct_path(came_from: HashMap<Coord, Coord>, current: Coord) -> Vec<Coord> {
     let mut total_path = vec![current];
-    for (key, _) in came_from {
-        total_path.push(key);
+
+    let mut current = current;
+    while came_from.contains_key(&current) {
+        current = *came_from.get(&current).unwrap();
+        total_path.push(current);
     }
 
     total_path
 }
 
 fn heuritis(neighbour: Coord, goal: Coord) -> usize {
-    ((neighbour.0 as i64 - goal.0 as i64) + (neighbour.1 as i64 - goal.1 as i64)).abs() as usize
+    (((neighbour.0 as i64 - goal.0 as i64).pow(2) + (neighbour.1 as i64 - goal.1 as i64).pow(2))
+        .abs() as f64)
+        .sqrt() as usize
 }
 
 fn A_star(map: &[Vec<char>], start: Coord, goal: Coord) -> Vec<Coord> {
@@ -60,8 +69,32 @@ fn A_star(map: &[Vec<char>], start: Coord, goal: Coord) -> Vec<Coord> {
 
     let mut dir = Direction::Left;
     while !open_set.is_empty() {
-        let current = open_set.remove(0);
+        //println!("{:?}", f_score);
+        //thread::sleep(time::Duration::from_millis(300));
+
+        let mut min = usize::MAX;
+        let mut coord = Coord(0, 0);
+        for node in open_set.iter() {
+            if let Some(val) = f_score.get(node) {
+                if *val < min {
+                    coord = *node;
+                    min = *val;
+                }
+            }
+        }
+
+        let mut idx = 0;
+        for (i, el) in open_set.iter().enumerate() {
+            if coord == *el {
+                idx = i;
+            }
+        }
+
+        let current = open_set.remove(idx);
+
         if current == goal {
+            //println!("{:?}", g_score);
+            println!("Final score: {}", g_score.get(&goal).unwrap());
             return reconstruct_path(came_from, current);
         }
 
@@ -72,10 +105,14 @@ fn A_star(map: &[Vec<char>], start: Coord, goal: Coord) -> Vec<Coord> {
             g_score.entry(neigh).or_insert(usize::max_value());
 
             if tentative_score < *g_score.get(&neigh).unwrap() {
-                came_from.entry(neigh).and_modify(|f| *f = current);
-                g_score.entry(neigh).or_insert(tentative_score);
+                came_from.entry(neigh).or_insert(current);
+                g_score
+                    .entry(neigh)
+                    .and_modify(|el| *el = tentative_score)
+                    .or_insert(tentative_score);
                 f_score
                     .entry(neigh)
+                    .and_modify(|el| *el = tentative_score + heuritis(neigh, goal))
                     .or_insert(tentative_score + heuritis(neigh, goal));
                 if !open_set.contains(&neigh) {
                     open_set.push(neigh);
@@ -138,25 +175,22 @@ fn dist(current: Coord, neigh: Coord, dir: &mut Direction) -> usize {
 
         if *dir == tmp {
             *dir = tmp;
+            dist += 1000;
             break;
         }
 
         match tmp {
             Direction::Up => {
                 actual_dir = Some(Direction::Right);
-                dist += 1000;
             }
             Direction::Down => {
                 actual_dir = Some(Direction::Left);
-                dist += 1000;
             }
             Direction::Left => {
                 actual_dir = Some(Direction::Up);
-                dist += 1000;
             }
             Direction::Right => {
                 actual_dir = Some(Direction::Down);
-                dist += 1000;
             }
         }
     }
@@ -173,7 +207,7 @@ fn get_neighbours(map: &[Vec<char>], current: Coord) -> Vec<Coord> {
 
     let mut neighbours = vec![];
     for neigh in possible_neighbours {
-        if map[neigh.0][neigh.1] == '.' {
+        if map[neigh.0][neigh.1] == '.' || map[neigh.0][neigh.1] == 'E' {
             neighbours.push(neigh);
         }
     }
