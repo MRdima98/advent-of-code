@@ -28,15 +28,15 @@ pub fn run(path: &str) {
         map.push(tmp);
     }
 
-    pretty_print(&map);
+    //pretty_print(&map);
 
-    let path = A_star(&map, start, goal);
+    let path = a_star(&map, start, goal);
 
     for ele in path.iter().rev() {
         map[ele.0][ele.1] = 'O';
         //print!("{}", *ele + Coord(1, 1));
     }
-    pretty_print(&map);
+    //pretty_print(&map);
 }
 
 fn reconstruct_path(came_from: HashMap<Coord, Coord>, current: Coord) -> Vec<Coord> {
@@ -57,12 +57,12 @@ fn heuritis(neighbour: Coord, goal: Coord) -> usize {
         .sqrt() as usize
 }
 
-fn A_star(map: &[Vec<char>], start: Coord, goal: Coord) -> Vec<Coord> {
+fn a_star(map: &[Vec<char>], start: Coord, goal: Coord) -> Vec<Coord> {
     let mut open_set = vec![start];
     let mut came_from: HashMap<Coord, Coord> = HashMap::new();
 
-    let mut g_score: HashMap<Coord, usize> = HashMap::new();
-    g_score.insert(start, 0);
+    let mut g_score: HashMap<Coord, (usize, Direction)> = HashMap::new();
+    g_score.insert(start, (0, Direction::Left));
 
     let mut f_score: HashMap<Coord, usize> = HashMap::new();
     f_score.insert(start, heuritis(start, goal));
@@ -94,26 +94,40 @@ fn A_star(map: &[Vec<char>], start: Coord, goal: Coord) -> Vec<Coord> {
 
         if current == goal {
             //println!("{:?}", g_score);
-            println!("Final score: {}", g_score.get(&goal).unwrap());
+            println!("\nFinal score: {}", g_score.get(&goal).unwrap().0);
             return reconstruct_path(came_from, current);
         }
 
         let neighbours = get_neighbours(map, current);
 
         for neigh in neighbours {
-            let tentative_score = g_score.get(&current).unwrap() + dist(current, neigh, &mut dir);
-            g_score.entry(neigh).or_insert(usize::max_value());
+            let current_score = g_score.get(&current).unwrap();
+            let mut current_direction = current_score.1;
+            let tentative_score = current_score.0 + dist(current, neigh, &mut current_direction);
+            //println!("Tentative: {tentative_score}");
+            //println!("curr: {:?}", current_score);
+            //println!("gscore: {:?}", g_score);
+            //print_surr(map, neigh);
+            //thread::sleep(time::Duration::from_millis(300));
+            //panic!();
 
-            if tentative_score < *g_score.get(&neigh).unwrap() {
+            g_score
+                .entry(neigh)
+                .or_insert((usize::max_value(), current_direction));
+
+            f_score.entry(neigh).or_insert(usize::max_value());
+
+            if tentative_score < g_score.get(&neigh).unwrap().0 {
                 came_from.entry(neigh).or_insert(current);
+
                 g_score
                     .entry(neigh)
-                    .and_modify(|el| *el = tentative_score)
-                    .or_insert(tentative_score);
+                    .and_modify(|el| *el = (tentative_score, current_direction));
+
                 f_score
                     .entry(neigh)
-                    .and_modify(|el| *el = tentative_score + heuritis(neigh, goal))
-                    .or_insert(tentative_score + heuritis(neigh, goal));
+                    .and_modify(|el| *el = tentative_score + heuritis(neigh, goal));
+
                 if !open_set.contains(&neigh) {
                     open_set.push(neigh);
                 }
@@ -144,21 +158,21 @@ fn dist(current: Coord, neigh: Coord, dir: &mut Direction) -> usize {
             if matches!(dir, Direction::Down) {
                 dist += 1;
             } else {
-                actual_dir = Some(Direction::Up);
+                actual_dir = Some(Direction::Down);
             }
         }
         (0, 1) => {
             if matches!(dir, Direction::Right) {
                 dist += 1;
             } else {
-                actual_dir = Some(Direction::Up);
+                actual_dir = Some(Direction::Right);
             }
         }
         (0, -1) => {
             if matches!(dir, Direction::Left) {
                 dist += 1;
             } else {
-                actual_dir = Some(Direction::Up);
+                actual_dir = Some(Direction::Left);
             }
         }
         (_, _) => {}
@@ -168,34 +182,64 @@ fn dist(current: Coord, neigh: Coord, dir: &mut Direction) -> usize {
         return 1;
     }
 
-    loop {
-        let Some(tmp) = actual_dir else {
-            break;
-        };
+    if let Some(actual_dir) = actual_dir {
+        let clockwise = rotate(&mut dir.clone(), actual_dir.clone(), "CLOCKWISE");
+        let anti_clockwise = rotate(&mut dir.clone(), actual_dir, "ANTI-CLOCKWISE");
+        *dir = actual_dir;
+        //println!("Min: {}", clockwise.min(anti_clockwise));
+        //thread::sleep(time::Duration::from_millis(300));
 
-        if *dir == tmp {
-            *dir = tmp;
-            dist += 1000;
+        return clockwise.min(anti_clockwise);
+    }
+
+    dist
+}
+
+fn rotate(dir: &mut Direction, actual_dir: Direction, which_way: &str) -> usize {
+    let mut counter = 0;
+    let clockwise = "CLOCKWISE";
+    loop {
+        if *dir == actual_dir {
             break;
         }
 
-        match tmp {
+        match dir {
             Direction::Up => {
-                actual_dir = Some(Direction::Right);
+                counter += 1000;
+                if which_way == clockwise {
+                    *dir = Direction::Right;
+                } else {
+                    *dir = Direction::Left;
+                }
             }
             Direction::Down => {
-                actual_dir = Some(Direction::Left);
+                counter += 1000;
+                if which_way == clockwise {
+                    *dir = Direction::Left;
+                } else {
+                    *dir = Direction::Right;
+                }
             }
             Direction::Left => {
-                actual_dir = Some(Direction::Up);
+                counter += 1000;
+                if which_way == clockwise {
+                    *dir = Direction::Up;
+                } else {
+                    *dir = Direction::Down;
+                }
             }
             Direction::Right => {
-                actual_dir = Some(Direction::Down);
+                counter += 1000;
+                if which_way == clockwise {
+                    *dir = Direction::Down;
+                } else {
+                    *dir = Direction::Up;
+                }
             }
         }
     }
 
-    dist
+    counter + 1
 }
 
 fn get_neighbours(map: &[Vec<char>], current: Coord) -> Vec<Coord> {
@@ -252,7 +296,7 @@ impl Sub for Coord {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
 enum Direction {
     Up,
     Down,
@@ -264,6 +308,20 @@ fn pretty_print(map: &[Vec<char>]) {
     for line in map {
         for el in line {
             print!("{el}");
+        }
+        println!();
+    }
+    println!();
+}
+
+fn print_surr(map: &[Vec<char>], coord: Coord) {
+    for (i, line) in map.iter().enumerate() {
+        for (j, el) in line.iter().enumerate() {
+            if i == coord.0 && j == coord.1 {
+                print!("X");
+            } else {
+                print!("{el}");
+            }
         }
         println!();
     }
