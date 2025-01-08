@@ -36,7 +36,23 @@ pub fn run(path: &str) {
         map[ele.0][ele.1] = 'O';
         //print!("{}", *ele + Coord(1, 1));
     }
-    //pretty_print(&map);
+    pretty_print(&map);
+}
+
+fn reconstruct_every(
+    came_from: &mut HashMap<Coord, Vec<Coord>>,
+    current: Coord,
+    seats: &mut Vec<Coord>,
+) {
+    let mut total_path = vec![current];
+
+    while came_from.contains_key(&current) {
+        let tmp = came_from.get(&current).unwrap();
+        for el in tmp {
+            reconstruct_every(came_from, *el, seats);
+        }
+        total_path.push(current);
+    }
 }
 
 fn reconstruct_path(came_from: HashMap<Coord, Coord>, current: Coord) -> Vec<Coord> {
@@ -59,7 +75,7 @@ fn heuritis(neighbour: Coord, goal: Coord) -> usize {
 
 fn a_star(map: &[Vec<char>], start: Coord, goal: Coord) -> Vec<Coord> {
     let mut open_set = vec![start];
-    let mut came_from: HashMap<Coord, Coord> = HashMap::new();
+    let mut came_from: HashMap<Coord, Vec<Coord>> = HashMap::new();
 
     let mut g_score: HashMap<Coord, (usize, Direction)> = HashMap::new();
     g_score.insert(start, (0, Direction::Left));
@@ -67,35 +83,16 @@ fn a_star(map: &[Vec<char>], start: Coord, goal: Coord) -> Vec<Coord> {
     let mut f_score: HashMap<Coord, usize> = HashMap::new();
     f_score.insert(start, heuritis(start, goal));
 
-    let mut dir = Direction::Left;
     while !open_set.is_empty() {
         //println!("{:?}", f_score);
         //thread::sleep(time::Duration::from_millis(300));
 
-        let mut min = usize::MAX;
-        let mut coord = Coord(0, 0);
-        for node in open_set.iter() {
-            if let Some(val) = f_score.get(node) {
-                if *val < min {
-                    coord = *node;
-                    min = *val;
-                }
-            }
-        }
-
-        let mut idx = 0;
-        for (i, el) in open_set.iter().enumerate() {
-            if coord == *el {
-                idx = i;
-            }
-        }
-
-        let current = open_set.remove(idx);
+        let current = open_set.remove(0);
 
         if current == goal {
             //println!("{:?}", g_score);
-            println!("\nFinal score: {}", g_score.get(&goal).unwrap().0);
-            return reconstruct_path(came_from, current);
+            //println!("\nFinal score: {}", g_score.get(&goal).unwrap().0);
+            //return reconstruct_path(came_from, current);
         }
 
         let neighbours = get_neighbours(map, current);
@@ -104,12 +101,7 @@ fn a_star(map: &[Vec<char>], start: Coord, goal: Coord) -> Vec<Coord> {
             let current_score = g_score.get(&current).unwrap();
             let mut current_direction = current_score.1;
             let tentative_score = current_score.0 + dist(current, neigh, &mut current_direction);
-            //println!("Tentative: {tentative_score}");
-            //println!("curr: {:?}", current_score);
-            //println!("gscore: {:?}", g_score);
-            //print_surr(map, neigh);
             //thread::sleep(time::Duration::from_millis(300));
-            //panic!();
 
             g_score
                 .entry(neigh)
@@ -117,8 +109,15 @@ fn a_star(map: &[Vec<char>], start: Coord, goal: Coord) -> Vec<Coord> {
 
             f_score.entry(neigh).or_insert(usize::max_value());
 
-            if tentative_score < g_score.get(&neigh).unwrap().0 {
-                came_from.entry(neigh).or_insert(current);
+            if tentative_score <= g_score.get(&neigh).unwrap().0 {
+                came_from
+                    .entry(neigh)
+                    .and_modify(|f| {
+                        if !f.contains(&current) {
+                            f.push(current)
+                        }
+                    })
+                    .or_insert(vec![current]);
 
                 g_score
                     .entry(neigh)
@@ -128,11 +127,13 @@ fn a_star(map: &[Vec<char>], start: Coord, goal: Coord) -> Vec<Coord> {
                     .entry(neigh)
                     .and_modify(|el| *el = tentative_score + heuritis(neigh, goal));
 
-                if !open_set.contains(&neigh) {
-                    open_set.push(neigh);
-                }
+                open_set.push(neigh);
             }
         }
+    }
+
+    for ele in came_from {
+        println!("{:?}", ele);
     }
 
     vec![]

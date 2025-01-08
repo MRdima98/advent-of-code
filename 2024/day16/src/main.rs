@@ -3,6 +3,7 @@ use std::env;
 use template::part1::code::run as run1;
 use template::part2::code::run as run2;
 
+#[allow(warnings)]
 fn main() {
     let args: Vec<String> = env::args().collect();
     let Some(choose) = args.get(1) else {
@@ -17,5 +18,4 @@ fn main() {
     } else {
         println!("Chief is either 1 or 2");
     }
-
 }

@@ -28,15 +28,7 @@ pub fn run(path: &str) {
         map.push(tmp);
     }
 
-    //pretty_print(&map);
-
     let path = a_star(&map, start, goal);
-
-    for ele in path.iter().rev() {
-        map[ele.0][ele.1] = 'O';
-        //print!("{}", *ele + Coord(1, 1));
-    }
-    //pretty_print(&map);
 }
 
 fn reconstruct_path(came_from: HashMap<Coord, Coord>, current: Coord) -> Vec<Coord> {
@@ -67,11 +59,7 @@ fn a_star(map: &[Vec<char>], start: Coord, goal: Coord) -> Vec<Coord> {
     let mut f_score: HashMap<Coord, usize> = HashMap::new();
     f_score.insert(start, heuritis(start, goal));
 
-    let mut dir = Direction::Left;
     while !open_set.is_empty() {
-        //println!("{:?}", f_score);
-        //thread::sleep(time::Duration::from_millis(300));
-
         let mut min = usize::MAX;
         let mut coord = Coord(0, 0);
         for node in open_set.iter() {
@@ -93,8 +81,6 @@ fn a_star(map: &[Vec<char>], start: Coord, goal: Coord) -> Vec<Coord> {
         let current = open_set.remove(idx);
 
         if current == goal {
-            //println!("{:?}", g_score);
-            println!("\nFinal score: {}", g_score.get(&goal).unwrap().0);
             return reconstruct_path(came_from, current);
         }
 
@@ -104,12 +90,6 @@ fn a_star(map: &[Vec<char>], start: Coord, goal: Coord) -> Vec<Coord> {
             let current_score = g_score.get(&current).unwrap();
             let mut current_direction = current_score.1;
             let tentative_score = current_score.0 + dist(current, neigh, &mut current_direction);
-            //println!("Tentative: {tentative_score}");
-            //println!("curr: {:?}", current_score);
-            //println!("gscore: {:?}", g_score);
-            //print_surr(map, neigh);
-            //thread::sleep(time::Duration::from_millis(300));
-            //panic!();
 
             g_score
                 .entry(neigh)
@@ -186,9 +166,6 @@ fn dist(current: Coord, neigh: Coord, dir: &mut Direction) -> usize {
         let clockwise = rotate(&mut dir.clone(), actual_dir.clone(), "CLOCKWISE");
         let anti_clockwise = rotate(&mut dir.clone(), actual_dir, "ANTI-CLOCKWISE");
         *dir = actual_dir;
-        //println!("Min: {}", clockwise.min(anti_clockwise));
-        //thread::sleep(time::Duration::from_millis(300));
-
         return clockwise.min(anti_clockwise);
     }
 
