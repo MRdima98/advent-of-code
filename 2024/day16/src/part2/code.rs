@@ -1,4 +1,4 @@
-use core::time;
+use core::{panic, time};
 use std::{
     collections::HashMap,
     fmt::Display,
@@ -28,31 +28,67 @@ pub fn run(path: &str) {
         map.push(tmp);
     }
 
+    let path_info = a_star(&map, start, goal, Direction::Right);
+    //let mut path = vec![];
+    let optimal = path_info[0].1;
+
+    //for node in path_info.iter() {
+    //    path.push(node.0);
+    //}
+    //
+    //let mut wrong_path: Vec<(Coord, usize, Direction)> = vec![];
+    //
+    //for ele in path_info.iter() {
+    //    let cost_until_now = ele.1;
+    //    let mut one_move_cost = 0;
+    //    let mut partial = vec![];
+    //    let neighbours = get_neighbours(&map, ele.0);
+    //    for neigh in neighbours {
+    //        if path.contains(&neigh) {
+    //            continue;
+    //        }
+    //        let mut dir = ele.2;
+    //        one_move_cost = dist(ele.0, neigh, &mut dir);
+    //        partial = a_star(&map, neigh, goal, dir);
+    //
+    //        if neigh.0 == 113 && neigh.1 == 12 {
+    //            println!("Should hit");
+    //            println!("{:?}", partial);
+    //            println!("{}", cost_until_now + one_move_cost + partial[0].1);
+    //            println!("{}", one_move_cost);
+    //            wrong_path = partial.clone();
+    //        }
+    //    }
+    //
+    //    if partial.is_empty() {
+    //        continue;
+    //    }
+    //
+    //    if optimal >= cost_until_now + one_move_cost + partial[0].1 {
+    //        for node in partial.iter() {
+    //            if !path.contains(&node.0) {
+    //                path.push(node.0);
+    //            }
+    //        }
+    //    }
+    //
+    //    //if optimal > cost_until_now + one_move_cost + partial[0].1 {
+    //    //    println!("{}", cost_until_now + one_move_cost + partial[0].1);
+    //    //}
+    //}
+    //
+    //for node in path.iter() {
+    //    map[node.0][node.1] = 'O';
+    //}
+    //
+    //for node in wrong_path.iter() {
+    //    map[node.0 .0][node.0 .1] = 'X';
+    //}
+    //
     //pretty_print(&map);
-
-    let path = a_star(&map, start, goal);
-
-    for ele in path.iter().rev() {
-        map[ele.0][ele.1] = 'O';
-        //print!("{}", *ele + Coord(1, 1));
-    }
-    pretty_print(&map);
-}
-
-fn reconstruct_every(
-    came_from: &mut HashMap<Coord, Vec<Coord>>,
-    current: Coord,
-    seats: &mut Vec<Coord>,
-) {
-    let mut total_path = vec![current];
-
-    while came_from.contains_key(&current) {
-        let tmp = came_from.get(&current).unwrap();
-        for el in tmp {
-            reconstruct_every(came_from, *el, seats);
-        }
-        total_path.push(current);
-    }
+    //
+    println!("Optimal: {optimal}");
+    //println!("Count of nodes: {}", path.len());
 }
 
 fn reconstruct_path(came_from: HashMap<Coord, Coord>, current: Coord) -> Vec<Coord> {
@@ -73,35 +109,75 @@ fn heuritis(neighbour: Coord, goal: Coord) -> usize {
         .sqrt() as usize
 }
 
-fn a_star(map: &[Vec<char>], start: Coord, goal: Coord) -> Vec<Coord> {
-    let mut open_set = vec![start];
-    let mut came_from: HashMap<Coord, Vec<Coord>> = HashMap::new();
+fn a_star(
+    map: &[Vec<char>],
+    start: Coord,
+    goal: Coord,
+    dir: Direction,
+) -> Vec<(Coord, usize, Direction)> {
+    let mut open_set = vec![];
+    let mut came_from: HashMap<Coord, Coord> = HashMap::new();
 
     let mut g_score: HashMap<Coord, (usize, Direction)> = HashMap::new();
-    g_score.insert(start, (0, Direction::Left));
+    g_score.insert(start, (0, dir));
 
     let mut f_score: HashMap<Coord, usize> = HashMap::new();
     f_score.insert(start, heuritis(start, goal));
 
     while !open_set.is_empty() {
-        //println!("{:?}", f_score);
-        //thread::sleep(time::Duration::from_millis(300));
+        let mut min = usize::MAX;
+        let mut coord = Coord(0, 0);
+        for node in open_set.iter() {
+            if let Some(val) = f_score.get(node) {
+                if *val < min {
+                    coord = *node;
+                    min = *val;
+                }
+            }
+        }
 
-        let current = open_set.remove(0);
+        let mut idx = 0;
+        for (i, el) in open_set.iter().enumerate() {
+            if coord == *el {
+                idx = i;
+            }
+        }
+
+        let current = open_set.remove(idx);
+
+        //println!("current: {current}");
+        //let mut tmp = vec![];
+        //for el in map.iter() {
+        //    tmp.push(el.clone());
+        //}
+        //tmp[current.0][current.1] = 'X';
+        //pretty_print(&tmp);
+        //thread::sleep(time::Duration::from_millis(200));
 
         if current == goal {
-            //println!("{:?}", g_score);
-            //println!("\nFinal score: {}", g_score.get(&goal).unwrap().0);
-            //return reconstruct_path(came_from, current);
+            let tmp = reconstruct_path(came_from.clone(), current);
+            let mut res = vec![];
+            for el in tmp {
+                if let Some(cost) = g_score.get(&el) {
+                    res.push((el, cost.0, cost.1));
+                    //println!("{},{}, {:?}", el, cost.0, cost.1)
+                }
+            }
+            return res;
         }
 
         let neighbours = get_neighbours(map, current);
 
+        println!("Curr: {current}");
         for neigh in neighbours {
             let current_score = g_score.get(&current).unwrap();
             let mut current_direction = current_score.1;
             let tentative_score = current_score.0 + dist(current, neigh, &mut current_direction);
-            //thread::sleep(time::Duration::from_millis(300));
+
+            //if current == Coord(1, 4) {
+            //    println!("{:?}\n", g_score);
+            //    println!("{tentative_score}");
+            //}
 
             g_score
                 .entry(neigh)
@@ -109,15 +185,12 @@ fn a_star(map: &[Vec<char>], start: Coord, goal: Coord) -> Vec<Coord> {
 
             f_score.entry(neigh).or_insert(usize::max_value());
 
-            if tentative_score <= g_score.get(&neigh).unwrap().0 {
-                came_from
-                    .entry(neigh)
-                    .and_modify(|f| {
-                        if !f.contains(&current) {
-                            f.push(current)
-                        }
-                    })
-                    .or_insert(vec![current]);
+            if tentative_score < g_score.get(&neigh).unwrap().0 {
+                println!("Neigh {}", neigh);
+                println!("Best: {}", g_score.get(&neigh).unwrap().0);
+                println!("Tentative {tentative_score}");
+                println!();
+                came_from.entry(neigh).or_insert(current);
 
                 g_score
                     .entry(neigh)
@@ -127,13 +200,11 @@ fn a_star(map: &[Vec<char>], start: Coord, goal: Coord) -> Vec<Coord> {
                     .entry(neigh)
                     .and_modify(|el| *el = tentative_score + heuritis(neigh, goal));
 
-                open_set.push(neigh);
+                if !open_set.contains(&neigh) {
+                    open_set.push(neigh);
+                }
             }
         }
-    }
-
-    for ele in came_from {
-        println!("{:?}", ele);
     }
 
     vec![]
@@ -143,8 +214,8 @@ fn dist(current: Coord, neigh: Coord, dir: &mut Direction) -> usize {
     let mut dist = 0;
     let mut actual_dir: Option<Direction> = None;
     let next_move = (
-        current.0 as i64 - neigh.0 as i64,
-        current.1 as i64 - neigh.1 as i64,
+        neigh.0 as i64 - current.0 as i64,
+        neigh.1 as i64 - current.1 as i64,
     );
 
     match next_move {
@@ -187,9 +258,6 @@ fn dist(current: Coord, neigh: Coord, dir: &mut Direction) -> usize {
         let clockwise = rotate(&mut dir.clone(), actual_dir.clone(), "CLOCKWISE");
         let anti_clockwise = rotate(&mut dir.clone(), actual_dir, "ANTI-CLOCKWISE");
         *dir = actual_dir;
-        //println!("Min: {}", clockwise.min(anti_clockwise));
-        //thread::sleep(time::Duration::from_millis(300));
-
         return clockwise.min(anti_clockwise);
     }
 
