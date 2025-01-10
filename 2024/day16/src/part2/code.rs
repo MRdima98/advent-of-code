@@ -7,7 +7,7 @@ use std::{
     thread, usize,
 };
 
-pub fn run(path: &str) {
+pub fn run(path: &str) -> usize {
     let input: String = fs::read_to_string(path).unwrap();
     let mut map = vec![];
     let mut start = Coord(0, 0);
@@ -29,66 +29,60 @@ pub fn run(path: &str) {
     }
 
     let path_info = a_star(&map, start, goal, Direction::Right);
-    //let mut path = vec![];
     let optimal = path_info[0].1;
 
-    //for node in path_info.iter() {
-    //    path.push(node.0);
-    //}
-    //
-    //let mut wrong_path: Vec<(Coord, usize, Direction)> = vec![];
-    //
-    //for ele in path_info.iter() {
-    //    let cost_until_now = ele.1;
-    //    let mut one_move_cost = 0;
-    //    let mut partial = vec![];
-    //    let neighbours = get_neighbours(&map, ele.0);
-    //    for neigh in neighbours {
-    //        if path.contains(&neigh) {
-    //            continue;
-    //        }
-    //        let mut dir = ele.2;
-    //        one_move_cost = dist(ele.0, neigh, &mut dir);
-    //        partial = a_star(&map, neigh, goal, dir);
-    //
-    //        if neigh.0 == 113 && neigh.1 == 12 {
-    //            println!("Should hit");
-    //            println!("{:?}", partial);
-    //            println!("{}", cost_until_now + one_move_cost + partial[0].1);
-    //            println!("{}", one_move_cost);
-    //            wrong_path = partial.clone();
-    //        }
-    //    }
-    //
-    //    if partial.is_empty() {
-    //        continue;
-    //    }
-    //
-    //    if optimal >= cost_until_now + one_move_cost + partial[0].1 {
-    //        for node in partial.iter() {
-    //            if !path.contains(&node.0) {
-    //                path.push(node.0);
-    //            }
-    //        }
-    //    }
-    //
-    //    //if optimal > cost_until_now + one_move_cost + partial[0].1 {
-    //    //    println!("{}", cost_until_now + one_move_cost + partial[0].1);
-    //    //}
-    //}
-    //
-    //for node in path.iter() {
-    //    map[node.0][node.1] = 'O';
-    //}
-    //
-    //for node in wrong_path.iter() {
-    //    map[node.0 .0][node.0 .1] = 'X';
-    //}
-    //
+    //println!("Optimal: {optimal}");
+
+    let mut path = vec![];
+
+    for node in path_info.iter() {
+        path.push(node.0);
+    }
+
+    for ele in path_info.iter() {
+        let cost_until_now = ele.1;
+        let mut one_move_cost = 0;
+        let mut partial = vec![];
+        let neighbours = get_neighbours(&map, ele.0);
+        for neigh in neighbours {
+            if path.contains(&neigh) {
+                continue;
+            }
+            let mut dir = ele.2;
+            one_move_cost = dist(ele.0, neigh, &mut dir);
+            partial = a_star(&map, neigh, goal, dir);
+
+            if neigh.0 == 113 && neigh.1 == 12 {
+                println!("Should hit");
+                //println!("{:?}", partial);
+                println!("{}", cost_until_now + one_move_cost + partial[0].1);
+                println!("{}", one_move_cost);
+                //wrong_path = partial.clone();
+            }
+        }
+
+        if partial.is_empty() {
+            continue;
+        }
+
+        if optimal >= cost_until_now + one_move_cost + partial[0].1 {
+            for node in partial.iter() {
+                if !path.contains(&node.0) {
+                    path.push(node.0);
+                }
+            }
+        }
+    }
+
+    for (node, _, _) in path_info.iter() {
+        map[node.0][node.1] = 'O';
+    }
+
     //pretty_print(&map);
-    //
+
     println!("Optimal: {optimal}");
-    //println!("Count of nodes: {}", path.len());
+    println!("Count of nodes: {}", path.len());
+    optimal
 }
 
 fn reconstruct_path(came_from: HashMap<Coord, Coord>, current: Coord) -> Vec<Coord> {
@@ -104,9 +98,12 @@ fn reconstruct_path(came_from: HashMap<Coord, Coord>, current: Coord) -> Vec<Coo
 }
 
 fn heuritis(neighbour: Coord, goal: Coord) -> usize {
-    (((neighbour.0 as i64 - goal.0 as i64).pow(2) + (neighbour.1 as i64 - goal.1 as i64).pow(2))
-        .abs() as f64)
-        .sqrt() as usize
+    if neighbour.0 != goal.0 {
+        return 5000;
+    }
+
+    ((neighbour.0 as i64 - goal.0 as i64).abs() + (neighbour.1 as i64 - goal.1 as i64).abs())
+        as usize
 }
 
 fn a_star(
@@ -115,7 +112,7 @@ fn a_star(
     goal: Coord,
     dir: Direction,
 ) -> Vec<(Coord, usize, Direction)> {
-    let mut open_set = vec![];
+    let mut open_set = vec![(start, dir)];
     let mut came_from: HashMap<Coord, Coord> = HashMap::new();
 
     let mut g_score: HashMap<Coord, (usize, Direction)> = HashMap::new();
@@ -128,9 +125,9 @@ fn a_star(
         let mut min = usize::MAX;
         let mut coord = Coord(0, 0);
         for node in open_set.iter() {
-            if let Some(val) = f_score.get(node) {
+            if let Some(val) = f_score.get(&node.0) {
                 if *val < min {
-                    coord = *node;
+                    coord = node.0;
                     min = *val;
                 }
             }
@@ -138,45 +135,47 @@ fn a_star(
 
         let mut idx = 0;
         for (i, el) in open_set.iter().enumerate() {
-            if coord == *el {
+            if coord == el.0 {
                 idx = i;
             }
         }
 
         let current = open_set.remove(idx);
 
-        //println!("current: {current}");
+        //println!("current: {}  min heuristi {}", current.0, min);
         //let mut tmp = vec![];
         //for el in map.iter() {
         //    tmp.push(el.clone());
         //}
-        //tmp[current.0][current.1] = 'X';
+        //tmp[current.0 .0][current.0 .1] = 'X';
         //pretty_print(&tmp);
         //thread::sleep(time::Duration::from_millis(200));
 
-        if current == goal {
-            let tmp = reconstruct_path(came_from.clone(), current);
+        if current.0 == goal {
+            let tmp = reconstruct_path(came_from.clone(), current.0);
             let mut res = vec![];
             for el in tmp {
                 if let Some(cost) = g_score.get(&el) {
                     res.push((el, cost.0, cost.1));
-                    //println!("{},{}, {:?}", el, cost.0, cost.1)
                 }
             }
             return res;
         }
 
-        let neighbours = get_neighbours(map, current);
+        let neighbours = get_neighbours(map, current.0);
+        //println!("{:?}", g_score);
 
-        println!("Curr: {current}");
         for neigh in neighbours {
-            let current_score = g_score.get(&current).unwrap();
-            let mut current_direction = current_score.1;
-            let tentative_score = current_score.0 + dist(current, neigh, &mut current_direction);
-
-            //if current == Coord(1, 4) {
-            //    println!("{:?}\n", g_score);
-            //    println!("{tentative_score}");
+            let current_score = g_score.get(&current.0).unwrap();
+            let mut current_direction = current.1;
+            let tentative_score = current_score.0 + dist(current.0, neigh, &mut current_direction);
+            //println!(
+            //    "tentative: {tentative_score} node: {}, dir: {:?}",
+            //    current.0, current_direction
+            //);
+            //
+            //if let Some(score) = g_score.get(&neigh) {
+            //    println!("extra score: {}", score.0);
             //}
 
             g_score
@@ -186,11 +185,9 @@ fn a_star(
             f_score.entry(neigh).or_insert(usize::max_value());
 
             if tentative_score < g_score.get(&neigh).unwrap().0 {
-                println!("Neigh {}", neigh);
-                println!("Best: {}", g_score.get(&neigh).unwrap().0);
-                println!("Tentative {tentative_score}");
-                println!();
-                came_from.entry(neigh).or_insert(current);
+                //println!("curr score: {}", g_score.get(&neigh).unwrap().0);
+
+                came_from.entry(neigh).or_insert(current.0);
 
                 g_score
                     .entry(neigh)
@@ -199,13 +196,14 @@ fn a_star(
                 f_score
                     .entry(neigh)
                     .and_modify(|el| *el = tentative_score + heuritis(neigh, goal));
-
-                if !open_set.contains(&neigh) {
-                    open_set.push(neigh);
+                if !open_set.contains(&(neigh, current_direction)) {
+                    open_set.push((neigh, current_direction));
                 }
             }
+            //println!();
         }
     }
+    //println!("{}", g_score.get(&goal).unwrap().0);
 
     vec![]
 }
@@ -383,16 +381,21 @@ fn pretty_print(map: &[Vec<char>]) {
     println!();
 }
 
-fn print_surr(map: &[Vec<char>], coord: Coord) {
-    for (i, line) in map.iter().enumerate() {
-        for (j, el) in line.iter().enumerate() {
-            if i == coord.0 && j == coord.1 {
-                print!("X");
-            } else {
-                print!("{el}");
-            }
-        }
-        println!();
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reddit2() {
+        let res = run("./inputs/reddit2");
+        let expected = 4013;
+        assert_eq!(res, expected, "\nres: \n{res}\nexpected:\n{expected}");
     }
-    println!();
+
+    #[test]
+    fn base1() {
+        let res = run("./inputs/base1");
+        let expected = 7036;
+        assert_eq!(res, expected, "\nres: \n{res}\nexpected:\n{expected}");
+    }
 }
