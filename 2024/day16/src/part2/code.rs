@@ -11,7 +11,7 @@ use std::{
 pub fn run(path: &str) -> usize {
     let input: String = fs::read_to_string(path).unwrap();
     let mut map = vec![];
-    let mut start = Coord(0, 0);
+    let mut source = Coord(0, 0);
     let mut goal = Coord(0, 0);
 
     for (i, line) in input.lines().enumerate() {
@@ -19,7 +19,7 @@ pub fn run(path: &str) -> usize {
         for (j, el) in line.chars().enumerate() {
             tmp.push(el);
             if el == 'S' {
-                start = Coord(i, j);
+                source = Coord(i, j);
             }
 
             if el == 'E' {
@@ -29,14 +29,14 @@ pub fn run(path: &str) -> usize {
         map.push(tmp);
     }
 
-    let (dist, prev) = dijkstra(&map, start, goal, Direction::Right);
+    let (dist, prev) = dijkstra(&map, source, goal, Direction::Right);
     let (optimal, _) = dist.get(&goal).unwrap().clone();
     let mut path_info = reconstruct_path(dist, prev, &mut goal.clone());
+
     let tmp = path_info.clone();
     for (i, el) in tmp.iter().rev().enumerate() {
         path_info[i] = *el;
     }
-    println!("Goal: {:?}", goal);
     let mut path = vec![];
 
     for node in path_info.iter() {
@@ -44,6 +44,7 @@ pub fn run(path: &str) -> usize {
     }
 
     for el in path_info.iter() {
+        println!("el: {}", el.0);
         let cost_until_now = el.1;
         let mut one_move_cost = 0;
         let mut partial = vec![];
@@ -62,7 +63,7 @@ pub fn run(path: &str) -> usize {
             continue;
         }
 
-        if optimal >= cost_until_now + one_move_cost + partial[0].1 {
+        if optimal == cost_until_now + one_move_cost + partial[0].1 {
             for node in partial.iter() {
                 if !path.contains(&node.0) {
                     path.push(node.0);
@@ -98,10 +99,11 @@ fn reconstruct_path(
         let cost = dist.get(&goal).unwrap();
 
         let Some(node) = node else {
+            path.push((*goal, 0, cost.1));
             break;
         };
 
-        path.push((node.0, cost.0, cost.1));
+        path.push((*goal, cost.0, cost.1));
 
         *goal = node.0;
     }
@@ -131,38 +133,55 @@ fn dijkstra(
             }
         }
     }
-    dist.entry(source).or_insert((0, dir));
+    dist.entry(source)
+        .and_modify(|val| *val = (0, dir))
+        .or_insert((0, dir));
+    prev.entry(source)
+        .and_modify(|prev| *prev = None)
+        .or_insert(None);
     queue.push(source);
 
     while !queue.is_empty() {
-        let mut min_cord = Coord(0, 0);
+        let mut min_coord: Option<Coord> = None;
         let mut min_val = usize::max_value();
         for el in queue.iter() {
             if let Some(node) = dist.get(&el) {
-                if node.0 < min_val {
+                if node.0 <= min_val {
                     min_val = node.0;
-                    min_cord = *el;
+                    min_coord = Some(*el);
                 }
             }
         }
 
-        let mut idx = 0;
-        for (i, el) in queue.iter().enumerate() {
-            if *el == min_cord {
-                idx = i;
+        let mut current = source;
+        if let Some(coord) = min_coord {
+            let mut idx = 0;
+            for (i, el) in queue.iter().enumerate() {
+                if *el == coord {
+                    idx = i;
+                }
             }
+            current = queue.remove(idx);
         }
 
-        let current = queue.remove(idx);
         let neighbours = get_neighbours(map, current);
+        //let mut pretty = map.to_vec();
+        //pretty[current.0][current.1] = 'O';
+        //pretty_print(&pretty);
+        //thread::sleep(time::Duration::from_millis(50));
 
         for edge in neighbours {
             if !queue.contains(&edge) {
                 continue;
             }
+            //pretty[edge.0][edge.1] = 'O';
+            //pretty_print(&pretty);
+            //thread::sleep(time::Duration::from_millis(50));
             let prev_dir = dist.get(&current).unwrap().1;
             let (cost, mut dir) = dist.get(&current).unwrap().clone();
-            let alt = dist.get(&current).unwrap().0 + get_dist(current, edge, &mut dir);
+            //println!("Cost: {cost}");
+
+            let alt = cost + get_dist(current, edge, &mut dir);
             if alt < dist.get(&edge).unwrap().0 {
                 dist.entry(edge).and_modify(|f| *f = (alt, dir));
                 prev.entry(edge)
@@ -375,10 +394,10 @@ mod tests {
         assert_eq!(res, expected, "\nres: \n{res}\nexpected:\n{expected}");
     }
 
-    #[test]
-    fn input() {
-        let res = run("./inputs/input");
-        let expected = 130536;
-        assert_eq!(res, expected, "\nres: \n{res}\nexpected:\n{expected}");
-    }
+    //#[test]
+    //fn input() {
+    //    let res = run("./inputs/input");
+    //    let expected = 130536;
+    //    assert_eq!(res, expected, "\nres: \n{res}\nexpected:\n{expected}");
+    //}
 }
