@@ -28,81 +28,89 @@ pub fn run(path: &str) {
         map.push(tmp);
     }
 
-    let path = a_star(&map, start, goal, Direction::Right);
-    //let mut path = vec![];
-    //let optimal = path_info[0].1;
+    let mut path_with_cost = a_star(&map, start, goal, Direction::Right);
+    let mut seats = vec![];
+    let optimal = path_with_cost.first().unwrap().cost;
 
-    //for node in path_info.iter() {
-    //    path.push(node.0);
-    //}
-    //
-    //let mut wrong_path: Vec<(Coord, usize, Direction)> = vec![];
-    //
-    //for ele in path_info.iter() {
-    //    let cost_until_now = ele.1;
-    //    let mut one_move_cost = 0;
-    //    let mut partial = vec![];
-    //    let neighbours = get_neighbours(&map, ele.0);
-    //    for neigh in neighbours {
-    //        if path.contains(&neigh) {
-    //            continue;
-    //        }
-    //        let mut dir = ele.2;
-    //        one_move_cost = dist(ele.0, neigh, &mut dir);
-    //        partial = a_star(&map, neigh, goal, dir);
-    //
-    //        if neigh.0 == 113 && neigh.1 == 12 {
-    //            println!("Should hit");
-    //            println!("{:?}", partial);
-    //            println!("{}", cost_until_now + one_move_cost + partial[0].1);
-    //            println!("{}", one_move_cost);
-    //            wrong_path = partial.clone();
-    //        }
-    //    }
-    //
-    //    if partial.is_empty() {
-    //        continue;
-    //    }
-    //
-    //    if optimal >= cost_until_now + one_move_cost + partial[0].1 {
-    //        for node in partial.iter() {
-    //            if !path.contains(&node.0) {
-    //                path.push(node.0);
-    //            }
-    //        }
-    //    }
-    //
-    //    //if optimal > cost_until_now + one_move_cost + partial[0].1 {
-    //    //    println!("{}", cost_until_now + one_move_cost + partial[0].1);
-    //    //}
-    //}
-    //
-    for node in path.iter() {
-        map[node.0][node.1] = 'O';
+    println!("Optimal: {optimal}");
+    for el in path_with_cost.iter() {
+        seats.push(el.coord);
     }
-    //
-    //for node in wrong_path.iter() {
-    //    map[node.0 .0][node.0 .1] = 'X';
-    //}
-    //
+
+    while let Some(node) = path_with_cost.pop() {
+        if node.coord == goal || node.coord == start {
+            continue;
+        }
+
+        let neighbours = get_neighbours(&map, node.coord);
+
+        for neigh in neighbours.iter() {
+            if seats.contains(&neigh) {
+                continue;
+            }
+
+            let mut dir = node.dir;
+            let one_move_cost = dist(node.coord, *neigh, &mut dir);
+            let partial = a_star(&map, *neigh, goal, dir);
+
+            if partial.is_empty() {
+                continue;
+            }
+
+            //println!(
+            //    "Source: {}, Look: {} \n",
+            //    node.coord,
+            //    partial.first().unwrap().cost + one_move_cost + node.cost
+            //);
+
+            if partial.first().unwrap().cost + one_move_cost + node.cost == optimal {
+                for el in partial.iter() {
+                    if !seats.contains(&el.coord) {
+                        seats.push(el.coord);
+                    }
+
+                    if !path_with_cost.contains(el) {
+                        path_with_cost.push(el.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    for el in seats.iter() {
+        map[el.0][el.1] = 'O';
+    }
+
     pretty_print(&map);
-    //
-    //println!("Optimal: {optimal}");
-    //println!("Count of nodes: {}", path.len());
+    println!("Seats: {}", seats.len());
 }
 
 fn reconstruct_path2(
     came_from: HashMap<(Coord, Direction), Option<(Coord, Direction)>>,
     current: (Coord, Direction),
-) -> Vec<Coord> {
-    let mut total_path = vec![current.0];
+    g_score: HashMap<(Coord, Direction), usize>,
+) -> Vec<CoordWithCost> {
+    let mut total_path = vec![CoordWithCost {
+        coord: current.0,
+        dir: current.1,
+        cost: *g_score.get(&current).unwrap(),
+    }];
 
     let mut current = current;
     while came_from.contains_key(&current) {
+        //println!(
+        //    "Node: {} and score: {}",
+        //    current.0,
+        //    g_score.get(&current).unwrap()
+        //);
         match *came_from.get(&current).unwrap() {
             Some(curr) => {
                 current = curr;
-                total_path.push(current.0);
+                total_path.push(CoordWithCost {
+                    coord: current.0,
+                    dir: current.1,
+                    cost: *g_score.get(&current).unwrap(),
+                });
             }
             None => {
                 break;
@@ -131,7 +139,7 @@ fn heuritis(neighbour: Coord, goal: Coord) -> usize {
         .sqrt() as usize
 }
 
-fn a_star(map: &[Vec<char>], start: Coord, goal: Coord, dir: Direction) -> Vec<Coord> {
+fn a_star(map: &[Vec<char>], start: Coord, goal: Coord, dir: Direction) -> Vec<CoordWithCost> {
     let mut open_set = BinaryHeap::new();
     open_set.push(CoordDir { coord: start, dir });
     let mut came_from: HashMap<Coord, Coord> = HashMap::new();
@@ -214,9 +222,9 @@ fn a_star(map: &[Vec<char>], start: Coord, goal: Coord, dir: Direction) -> Vec<C
         }
     }
 
-    println!("Res: {min}");
+    //println!("Res: {min}");
 
-    reconstruct_path2(prev, best)
+    reconstruct_path2(prev, best, g_score)
 }
 
 fn dist(current: Coord, neigh: Coord, dir: &mut Direction) -> usize {
@@ -385,6 +393,13 @@ enum Direction {
 #[derive(PartialOrd, Ord, Eq, PartialEq)]
 struct CoordDir {
     coord: Coord,
+    dir: Direction,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
+struct CoordWithCost {
+    coord: Coord,
+    cost: usize,
     dir: Direction,
 }
 
