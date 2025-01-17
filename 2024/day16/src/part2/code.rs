@@ -1,17 +1,16 @@
 use core::{panic, time};
 use std::{
-    collections::HashMap,
+    collections::{BinaryHeap, HashMap},
     fmt::Display,
     fs,
-    hash::Hash,
     ops::{Add, AddAssign, Sub, SubAssign},
     thread, usize,
 };
 
-pub fn run(path: &str) -> usize {
+pub fn run(path: &str) {
     let input: String = fs::read_to_string(path).unwrap();
     let mut map = vec![];
-    let mut source = Coord(0, 0);
+    let mut start = Coord(0, 0);
     let mut goal = Coord(0, 0);
 
     for (i, line) in input.lines().enumerate() {
@@ -19,7 +18,7 @@ pub fn run(path: &str) -> usize {
         for (j, el) in line.chars().enumerate() {
             tmp.push(el);
             if el == 'S' {
-                source = Coord(i, j);
+                start = Coord(i, j);
             }
 
             if el == 'E' {
@@ -29,174 +28,198 @@ pub fn run(path: &str) -> usize {
         map.push(tmp);
     }
 
-    let (dist, prev) = dijkstra(&map, source, goal, Direction::Right);
-    let (optimal, _) = dist.get(&goal).unwrap().clone();
-    let mut path_info = reconstruct_path(dist, prev, &mut goal.clone());
+    let path = a_star(&map, start, goal, Direction::Right);
+    //let mut path = vec![];
+    //let optimal = path_info[0].1;
 
-    let tmp = path_info.clone();
-    for (i, el) in tmp.iter().rev().enumerate() {
-        path_info[i] = *el;
-    }
-    let mut path = vec![];
-
-    for node in path_info.iter() {
-        path.push(node.0);
-    }
-
-    for el in path_info.iter() {
-        println!("el: {}", el.0);
-        let cost_until_now = el.1;
-        let mut one_move_cost = 0;
-        let mut partial = vec![];
-        let neighbours = get_neighbours(&map, el.0);
-        for neigh in neighbours {
-            if path.contains(&neigh) {
-                continue;
-            }
-            let mut dir = el.2;
-            one_move_cost = get_dist(el.0, neigh, &mut dir);
-            let (dist, prev) = dijkstra(&map, neigh, goal, dir);
-            partial = reconstruct_path(dist, prev, &mut goal.clone());
-        }
-
-        if partial.is_empty() {
-            continue;
-        }
-
-        if optimal == cost_until_now + one_move_cost + partial[0].1 {
-            for node in partial.iter() {
-                if !path.contains(&node.0) {
-                    path.push(node.0);
-                }
-            }
-        }
-    }
-
+    //for node in path_info.iter() {
+    //    path.push(node.0);
+    //}
+    //
+    //let mut wrong_path: Vec<(Coord, usize, Direction)> = vec![];
+    //
+    //for ele in path_info.iter() {
+    //    let cost_until_now = ele.1;
+    //    let mut one_move_cost = 0;
+    //    let mut partial = vec![];
+    //    let neighbours = get_neighbours(&map, ele.0);
+    //    for neigh in neighbours {
+    //        if path.contains(&neigh) {
+    //            continue;
+    //        }
+    //        let mut dir = ele.2;
+    //        one_move_cost = dist(ele.0, neigh, &mut dir);
+    //        partial = a_star(&map, neigh, goal, dir);
+    //
+    //        if neigh.0 == 113 && neigh.1 == 12 {
+    //            println!("Should hit");
+    //            println!("{:?}", partial);
+    //            println!("{}", cost_until_now + one_move_cost + partial[0].1);
+    //            println!("{}", one_move_cost);
+    //            wrong_path = partial.clone();
+    //        }
+    //    }
+    //
+    //    if partial.is_empty() {
+    //        continue;
+    //    }
+    //
+    //    if optimal >= cost_until_now + one_move_cost + partial[0].1 {
+    //        for node in partial.iter() {
+    //            if !path.contains(&node.0) {
+    //                path.push(node.0);
+    //            }
+    //        }
+    //    }
+    //
+    //    //if optimal > cost_until_now + one_move_cost + partial[0].1 {
+    //    //    println!("{}", cost_until_now + one_move_cost + partial[0].1);
+    //    //}
+    //}
+    //
     for node in path.iter() {
         map[node.0][node.1] = 'O';
     }
-
+    //
+    //for node in wrong_path.iter() {
+    //    map[node.0 .0][node.0 .1] = 'X';
+    //}
+    //
     pretty_print(&map);
-
-    println!("Count of nodes: {}", path.len());
-    println!("{}", optimal);
-    optimal
+    //
+    //println!("Optimal: {optimal}");
+    //println!("Count of nodes: {}", path.len());
 }
 
-fn reconstruct_path(
-    dist: HashMap<Coord, (usize, Direction)>,
-    prev: HashMap<Coord, Option<(Coord, Direction)>>,
-    goal: &mut Coord,
-) -> Vec<(Coord, usize, Direction)> {
-    let mut path = vec![];
-    loop {
-        //println!("{}", *goal + Coord(1, 1));
+fn reconstruct_path2(
+    came_from: HashMap<(Coord, Direction), Option<(Coord, Direction)>>,
+    current: (Coord, Direction),
+) -> Vec<Coord> {
+    let mut total_path = vec![current.0];
+
+    let mut current = current;
+    while came_from.contains_key(&current) {
+        match *came_from.get(&current).unwrap() {
+            Some(curr) => {
+                current = curr;
+                total_path.push(current.0);
+            }
+            None => {
+                break;
+            }
+        }
+    }
+
+    total_path
+}
+
+fn reconstruct_path(came_from: HashMap<Coord, Coord>, current: Coord) -> Vec<Coord> {
+    let mut total_path = vec![current];
+
+    let mut current = current;
+    while came_from.contains_key(&current) {
+        current = *came_from.get(&current).unwrap();
+        total_path.push(current);
+    }
+
+    total_path
+}
+
+fn heuritis(neighbour: Coord, goal: Coord) -> usize {
+    (((neighbour.0 as i64 - goal.0 as i64).pow(2) + (neighbour.1 as i64 - goal.1 as i64).pow(2))
+        .abs() as f64)
+        .sqrt() as usize
+}
+
+fn a_star(map: &[Vec<char>], start: Coord, goal: Coord, dir: Direction) -> Vec<Coord> {
+    let mut open_set = BinaryHeap::new();
+    open_set.push(CoordDir { coord: start, dir });
+    let mut came_from: HashMap<Coord, Coord> = HashMap::new();
+
+    let mut g_score: HashMap<(Coord, Direction), usize> = HashMap::new();
+    g_score.insert((start, dir), 0);
+
+    let mut prev: HashMap<(Coord, Direction), Option<(Coord, Direction)>> = HashMap::new();
+    prev.insert((start, dir), None);
+
+    let mut f_score: HashMap<(Coord, Direction), usize> = HashMap::new();
+    f_score.insert((start, dir), heuritis(start, goal));
+
+    while let Some(tmp) = open_set.pop() {
+        let current = tmp.coord;
+        let dir = tmp.dir;
+        //println!("current: {current}");
+        //let mut tmp = vec![];
+        //for el in map.iter() {
+        //    tmp.push(el.clone());
+        //}
+        //tmp[current.0][current.1] = 'X';
+        //pretty_print(&tmp);
         //thread::sleep(time::Duration::from_millis(200));
-        let Some(node) = prev.get(&goal) else {
-            break;
-        };
 
-        let cost = dist.get(&goal).unwrap();
-
-        let Some(node) = node else {
-            path.push((*goal, 0, cost.1));
-            break;
-        };
-
-        path.push((*goal, cost.0, cost.1));
-
-        *goal = node.0;
-    }
-    path
-}
-
-fn dijkstra(
-    map: &[Vec<char>],
-    source: Coord,
-    goal: Coord,
-    dir: Direction,
-) -> (
-    HashMap<Coord, (usize, Direction)>,
-    HashMap<Coord, Option<(Coord, Direction)>>,
-) {
-    let mut dist: HashMap<Coord, (usize, Direction)> = HashMap::new();
-    let mut prev: HashMap<Coord, Option<(Coord, Direction)>> = HashMap::new();
-    let mut queue = vec![];
-
-    for (i, line) in map.iter().enumerate() {
-        for (j, el) in line.iter().enumerate() {
-            if *el == '.' || *el == 'E' {
-                let node = Coord(i, j);
-                dist.entry(node).or_insert((usize::max_value(), dir));
-                prev.entry(node).or_insert(None);
-                queue.push(node);
-            }
-        }
-    }
-    dist.entry(source)
-        .and_modify(|val| *val = (0, dir))
-        .or_insert((0, dir));
-    prev.entry(source)
-        .and_modify(|prev| *prev = None)
-        .or_insert(None);
-    queue.push(source);
-
-    while !queue.is_empty() {
-        let mut min_coord: Option<Coord> = None;
-        let mut min_val = usize::max_value();
-        for el in queue.iter() {
-            if let Some(node) = dist.get(&el) {
-                if node.0 <= min_val {
-                    min_val = node.0;
-                    min_coord = Some(*el);
-                }
-            }
-        }
-
-        let mut current = source;
-        if let Some(coord) = min_coord {
-            let mut idx = 0;
-            for (i, el) in queue.iter().enumerate() {
-                if *el == coord {
-                    idx = i;
-                }
-            }
-            current = queue.remove(idx);
-        }
+        //if current == goal {
+        //    reconstruct_path(came_from.clone(), current);
+        //}
 
         let neighbours = get_neighbours(map, current);
-        //let mut pretty = map.to_vec();
-        //pretty[current.0][current.1] = 'O';
-        //pretty_print(&pretty);
-        //thread::sleep(time::Duration::from_millis(50));
 
-        for edge in neighbours {
-            if !queue.contains(&edge) {
-                continue;
-            }
-            //pretty[edge.0][edge.1] = 'O';
-            //pretty_print(&pretty);
-            //thread::sleep(time::Duration::from_millis(50));
-            let prev_dir = dist.get(&current).unwrap().1;
-            let (cost, mut dir) = dist.get(&current).unwrap().clone();
-            //println!("Cost: {cost}");
+        for neigh in neighbours {
+            let current_score = g_score.get(&(current, dir)).unwrap();
+            let prev_dir = dir;
+            let mut current_direction = dir;
+            let tentative_score = current_score + dist(current, neigh, &mut current_direction);
 
-            let alt = cost + get_dist(current, edge, &mut dir);
-            if alt < dist.get(&edge).unwrap().0 {
-                dist.entry(edge).and_modify(|f| *f = (alt, dir));
-                prev.entry(edge)
-                    .and_modify(|f| *f = Some((current, prev_dir)));
+            //if current == Coord(1, 4) {
+            //    println!("{:?}\n", g_score);
+            //    println!("{tentative_score}");
+            //}
+
+            g_score
+                .entry((neigh, current_direction))
+                .or_insert(usize::max_value());
+
+            f_score
+                .entry((neigh, current_direction))
+                .or_insert(usize::max_value());
+
+            if tentative_score < *g_score.get(&(neigh, current_direction)).unwrap() {
+                came_from.entry(neigh).or_insert(current);
+
+                g_score
+                    .entry((neigh, current_direction))
+                    .and_modify(|el| *el = tentative_score);
+
+                prev.entry((neigh, current_direction))
+                    .and_modify(|el| *el = Some((current, prev_dir)))
+                    .or_insert(Some((current, prev_dir)));
+
+                f_score
+                    .entry((neigh, current_direction))
+                    .and_modify(|el| *el = tentative_score + heuritis(neigh, goal));
+
+                open_set.push(CoordDir {
+                    coord: neigh,
+                    dir: current_direction,
+                });
             }
         }
     }
 
-    //println!("{:?}", dist.get(&goal).unwrap());
-    //println!("{:?}", dist);
+    let mut best = (start, dir);
+    let mut min = usize::max_value();
+    for el in g_score.keys() {
+        if el.0 == goal && *g_score.get(&el).unwrap() <= min {
+            best = *el;
+            min = *g_score.get(&el).unwrap();
+        }
+    }
 
-    (dist, prev)
+    println!("Res: {min}");
+
+    reconstruct_path2(prev, best)
 }
 
-fn get_dist(current: Coord, neigh: Coord, dir: &mut Direction) -> usize {
+fn dist(current: Coord, neigh: Coord, dir: &mut Direction) -> usize {
     let mut dist = 0;
     let mut actual_dir: Option<Direction> = None;
     let next_move = (
@@ -314,7 +337,7 @@ fn get_neighbours(map: &[Vec<char>], current: Coord) -> Vec<Coord> {
     neighbours
 }
 
-#[derive(Clone, Debug, Copy, Eq, Hash, PartialEq, PartialOrd)]
+#[derive(Clone, Ord, Debug, Copy, Eq, Hash, PartialEq, PartialOrd)]
 struct Coord(usize, usize);
 
 impl Display for Coord {
@@ -351,12 +374,18 @@ impl Sub for Coord {
     }
 }
 
-#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+#[derive(PartialEq, Ord, PartialOrd, Hash, Eq, Copy, Clone, Debug)]
 enum Direction {
     Up,
     Down,
     Left,
     Right,
+}
+
+#[derive(PartialOrd, Ord, Eq, PartialEq)]
+struct CoordDir {
+    coord: Coord,
+    dir: Direction,
 }
 
 fn pretty_print(map: &[Vec<char>]) {
@@ -369,35 +398,16 @@ fn pretty_print(map: &[Vec<char>]) {
     println!();
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn reddit2() {
-        let res = run("./inputs/reddit2");
-        let expected = 4013;
-        assert_eq!(res, expected, "\nres: \n{res}\nexpected:\n{expected}");
+fn print_surr(map: &[Vec<char>], coord: Coord) {
+    for (i, line) in map.iter().enumerate() {
+        for (j, el) in line.iter().enumerate() {
+            if i == coord.0 && j == coord.1 {
+                print!("X");
+            } else {
+                print!("{el}");
+            }
+        }
+        println!();
     }
-
-    #[test]
-    fn base1() {
-        let res = run("./inputs/base1");
-        let expected = 7036;
-        assert_eq!(res, expected, "\nres: \n{res}\nexpected:\n{expected}");
-    }
-
-    #[test]
-    fn base2() {
-        let res = run("./inputs/base2");
-        let expected = 11048;
-        assert_eq!(res, expected, "\nres: \n{res}\nexpected:\n{expected}");
-    }
-
-    //#[test]
-    //fn input() {
-    //    let res = run("./inputs/input");
-    //    let expected = 130536;
-    //    assert_eq!(res, expected, "\nres: \n{res}\nexpected:\n{expected}");
-    //}
+    println!();
 }
