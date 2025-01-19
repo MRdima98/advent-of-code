@@ -50,14 +50,6 @@ pub fn run(path: &str) {
             let one_move_cost = dist(node.coord, *neigh, &mut dir);
             let partial = a_star(&map, *neigh, goal, dir);
 
-            //if node.coord == Coord(2, 23) {
-            //    println!(
-            //        "This should work: {:?}",
-            //        partial.first().unwrap().cost + one_move_cost + node.cost
-            //    );
-            //    println!("Node {}", node.cost);
-            //}
-
             if partial.is_empty() {
                 continue;
             }
@@ -73,7 +65,11 @@ pub fn run(path: &str) {
                 for el in partial.iter() {
                     if !seats.contains(&el.coord) {
                         seats.push(el.coord);
-                        path_with_cost.push(el.clone());
+                        path_with_cost.push(CoordWithCost {
+                            coord: el.coord,
+                            cost: node.cost + one_move_cost + el.cost,
+                            dir: el.dir,
+                        });
                     }
                 }
             }
@@ -84,7 +80,6 @@ pub fn run(path: &str) {
         map[el.0][el.1] = 'O';
     }
 
-    pretty_print(&map);
     println!("Seats: {}", seats.len());
 }
 
@@ -101,11 +96,6 @@ fn reconstruct_path2(
 
     let mut current = current;
     while came_from.contains_key(&current) {
-        //println!(
-        //    "Node: {} and score: {}",
-        //    current.0,
-        //    g_score.get(&current).unwrap()
-        //);
         match *came_from.get(&current).unwrap() {
             Some(curr) => {
                 current = curr;
@@ -119,18 +109,6 @@ fn reconstruct_path2(
                 break;
             }
         }
-    }
-
-    total_path
-}
-
-fn reconstruct_path(came_from: HashMap<Coord, Coord>, current: Coord) -> Vec<Coord> {
-    let mut total_path = vec![current];
-
-    let mut current = current;
-    while came_from.contains_key(&current) {
-        current = *came_from.get(&current).unwrap();
-        total_path.push(current);
     }
 
     total_path
@@ -159,19 +137,6 @@ fn a_star(map: &[Vec<char>], start: Coord, goal: Coord, dir: Direction) -> Vec<C
     while let Some(tmp) = open_set.pop() {
         let current = tmp.coord;
         let dir = tmp.dir;
-        //println!("current: {current}");
-        //let mut tmp = vec![];
-        //for el in map.iter() {
-        //    tmp.push(el.clone());
-        //}
-        //tmp[current.0][current.1] = 'X';
-        //pretty_print(&tmp);
-        //thread::sleep(time::Duration::from_millis(200));
-
-        //if current == goal {
-        //    reconstruct_path(came_from.clone(), current);
-        //}
-
         let neighbours = get_neighbours(map, current);
 
         for neigh in neighbours {
@@ -179,11 +144,6 @@ fn a_star(map: &[Vec<char>], start: Coord, goal: Coord, dir: Direction) -> Vec<C
             let prev_dir = dir;
             let mut current_direction = dir;
             let tentative_score = current_score + dist(current, neigh, &mut current_direction);
-
-            //if current == Coord(1, 4) {
-            //    println!("{:?}\n", g_score);
-            //    println!("{tentative_score}");
-            //}
 
             g_score
                 .entry((neigh, current_direction))
@@ -416,20 +376,6 @@ fn pretty_print(map: &[Vec<char>]) {
     for line in map {
         for el in line {
             print!("{el}");
-        }
-        println!();
-    }
-    println!();
-}
-
-fn print_surr(map: &[Vec<char>], coord: Coord) {
-    for (i, line) in map.iter().enumerate() {
-        for (j, el) in line.iter().enumerate() {
-            if i == coord.0 && j == coord.1 {
-                print!("X");
-            } else {
-                print!("{el}");
-            }
         }
         println!();
     }
