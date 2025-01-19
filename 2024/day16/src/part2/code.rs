@@ -4,7 +4,8 @@ use std::{
     fmt::Display,
     fs,
     ops::{Add, AddAssign, Sub, SubAssign},
-    thread, usize,
+    thread::{self, current},
+    usize,
 };
 
 pub fn run(path: &str) {
@@ -38,10 +39,6 @@ pub fn run(path: &str) {
     }
 
     while let Some(node) = path_with_cost.pop() {
-        if node.coord == goal || node.coord == start {
-            continue;
-        }
-
         let neighbours = get_neighbours(&map, node.coord);
 
         for neigh in neighbours.iter() {
@@ -53,23 +50,29 @@ pub fn run(path: &str) {
             let one_move_cost = dist(node.coord, *neigh, &mut dir);
             let partial = a_star(&map, *neigh, goal, dir);
 
+            //if node.coord == Coord(2, 23) {
+            //    println!(
+            //        "This should work: {:?}",
+            //        partial.first().unwrap().cost + one_move_cost + node.cost
+            //    );
+            //    println!("Node {}", node.cost);
+            //}
+
             if partial.is_empty() {
                 continue;
             }
 
-            //println!(
-            //    "Source: {}, Look: {} \n",
-            //    node.coord,
-            //    partial.first().unwrap().cost + one_move_cost + node.cost
-            //);
-
             if partial.first().unwrap().cost + one_move_cost + node.cost == optimal {
+                path_with_cost.push(CoordWithCost {
+                    coord: *neigh,
+                    cost: node.cost + one_move_cost,
+                    dir,
+                });
+                seats.push(*neigh);
+
                 for el in partial.iter() {
                     if !seats.contains(&el.coord) {
                         seats.push(el.coord);
-                    }
-
-                    if !path_with_cost.contains(el) {
                         path_with_cost.push(el.clone());
                     }
                 }
@@ -401,6 +404,12 @@ struct CoordWithCost {
     coord: Coord,
     cost: usize,
     dir: Direction,
+}
+
+impl Display for CoordWithCost {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}, {}, {:?}", self.coord, self.cost, self.dir)
+    }
 }
 
 fn pretty_print(map: &[Vec<char>]) {
